@@ -3,998 +3,165 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>e-Aduan Permohonan Pembangunan PPD Pontian</title>
-    <!-- Tailwind CSS -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    <!-- FontAwesome Icons -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <!-- Google Fonts Inter -->
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <script>
-        tailwind.config = {
-            theme: {
-                extend: {
-                    colors: {
-                        ppdNavy: '#0F2C59',
-                        ppdBlue: '#1E40AF',
-                        ppdGold: '#D97706',
-                        ppdLightGold: '#FEF3C7',
-                        ppdBg: '#F8FAFC'
-                    },
-                    fontFamily: {
-                        sans: ['Inter', 'sans-serif']
-                    }
-                }
-            }
-        }
-    </script>
-    <style>
-        /* Custom Styles for Polish */
-        body { background-color: #F8FAFC; font-family: 'Inter', sans-serif; }
-        .bg-pattern {
-            background-color: #0f2c59;
-            background-image: radial-gradient(#1e40af 0.75px, transparent 0.75px), radial-gradient(#1e40af 0.75px, #0f2c59 0.75px);
-            background-size: 30px 30px;
-            background-position: 0 0,15px 15px;
-        }
-        .modal-blur { backdrop-filter: blur(4px); }
-        /* Custom scrollbars */
-        ::-webkit-scrollbar { width: 6px; height: 6px; }
-        ::-webkit-scrollbar-track { background: #f1f5f9; }
-        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
-        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
-    </style>
+    <title>e-Aduan Penyelenggaraan PPD Pontian</title>
+    <link rel="stylesheet" href="style.css">
+    
+    <!-- Supabase JS Client -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
-<body class="min-h-screen text-slate-800 flex flex-col justify-between">
 
-    <!-- MAIN NAVIGATION BAR -->
-    <header class="bg-ppdNavy text-white shadow-lg sticky top-0 z-40 border-b-2 border-amber-500">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div class="flex items-center justify-between h-20">
-                <!-- Brand / Crest -->
-                <div class="flex items-center space-x-3 cursor-pointer" onclick="switchView('landing')">
-                    <div class="bg-amber-500 text-ppdNavy p-2.5 rounded-lg shadow-md flex items-center justify-center font-bold">
-                        <i class="fa-solid font-bold fa-building-columns text-2xl"></i>
-                    </div>
-                    <div>
-                        <div class="flex items-center space-x-2">
-                            <span class="text-xs font-semibold uppercase tracking-widest text-amber-400">PPD Pontian, Johor</span>
-                        </div>
-                        <h1 class="text-lg sm:text-xl font-bold tracking-tight leading-tight">e-Aduan Pembangunan</h1>
-                    </div>
-                </div>
+<body>
 
-                <!-- Navigation Controls -->
-                <div class="flex items-center space-x-2 sm:space-x-4">
-                    <button onclick="openHostingGuide()" class="hidden md:flex items-center space-x-2 bg-slate-800 hover:bg-slate-700 text-amber-400 border border-amber-500/40 px-3.5 py-1.5 rounded-lg text-xs font-medium transition shadow-sm">
-                        <i class="fa-solid fa-cloud-arrow-up text-sm"></i>
-                        <span>Panduan Deployment 24/7</span>
-                    </button>
-
-                    <!-- User Profile Dropdown / Login Badge -->
-                    <div id="navUserBadge" class="hidden flex items-center bg-slate-800/80 px-3 py-1.5 rounded-lg border border-slate-700">
-                        <div class="text-right mr-3 hidden sm:block">
-                            <p id="navUserName" class="text-xs font-semibold text-white">Nama Pengguna</p>
-                            <p id="navUserRole" class="text-[10px] text-amber-400 font-medium">Peranan</p>
-                        </div>
-                        <button onclick="logout()" class="text-slate-300 hover:text-red-400 p-1.5 rounded-md transition" title="Log Keluar">
-                            <i class="fa-solid fa-arrow-right-from-bracket"></i>
-                        </button>
-                    </div>
-
-                    <button id="navLoginBtn" onclick="openLoginModal()" class="bg-amber-500 hover:bg-amber-600 text-ppdNavy font-bold px-4 py-2 rounded-lg text-sm transition shadow-md flex items-center space-x-2">
-                        <i class="fa-solid fa-right-to-bracket"></i>
-                        <span>Log Masuk</span>
-                    </button>
-                </div>
+    <!-- Header Navigation -->
+    <header class="navbar">
+        <div class="logo-title">
+            <span class="flag-icon">🇲🇾</span>
+            <div>
+                <h1>e-Aduan Penyelenggaraan</h1>
+                <small>Pejabat Pendidikan Daerah Pontian</small>
             </div>
+        </div>
+        <div id="user-session" class="user-session hidden">
+            <span id="nav-user-name"><b>Log Masuk:</b> -</span>
+            <span id="nav-user-role" class="badge"></span>
+            <button class="btn-logout" onclick="logout()">Log Keluar</button>
         </div>
     </header>
 
-    <main class="flex-grow">
-
-        <!-- ================= LANDING PAGE ================= -->
-        <section id="viewLanding" class="py-12 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
-            <!-- Hero Banner -->
-            <div class="bg-pattern rounded-3xl p-8 sm:p-12 text-white shadow-2xl relative overflow-hidden mb-12 border border-slate-700">
-                <div class="relative z-10 max-w-3xl">
-                    <span class="bg-amber-500/20 text-amber-300 text-xs font-semibold uppercase px-3 py-1 rounded-full border border-amber-500/30">
-                        Sistem Pengurusan Aduan Infra & Fizikal Sekolah
-                    </span>
-                    <h2 class="text-3xl sm:text-5xl font-extrabold mt-4 mb-4 tracking-tight leading-tight">
-                        Permohonan Pembangunan & Kerosakan Prasarana PPD Pontian
-                    </h2>
-                    <p class="text-slate-300 text-base sm:text-lg mb-8 leading-relaxed">
-                        Platform digital sehenti bagi Pengetua, Guru Besar dan Pegawai PPD Pontian untuk menyalurkan, memantau, dan memproses permohonan pembaikan fizikal prasarana sekolah secara telus dan tersusun (Sistem FIFO).
-                    </p>
-                    <div class="flex flex-wrap gap-4">
-                        <button onclick="demoLogin('guru')" class="bg-amber-500 hover:bg-amber-600 text-ppdNavy font-bold px-6 py-3 rounded-xl transition shadow-lg flex items-center space-x-3 text-base">
-                            <i class="fa-solid fa-school text-lg"></i>
-                            <span>Masuk Sebagai Guru Besar</span>
-                        </button>
-                        <button onclick="demoLogin('ppd')" class="bg-slate-800 hover:bg-slate-700 text-white font-semibold px-6 py-3 rounded-xl border border-slate-600 transition shadow-lg flex items-center space-x-3 text-base">
-                            <i class="fa-solid fa-user-shield text-lg text-amber-400"></i>
-                            <span>Masuk Sebagai Pegawai PPD</span>
-                        </button>
-                    </div>
+    <!-- LOGIN MODAL -->
+    <div id="login-modal" class="modal-overlay">
+        <div class="modal-card">
+            <h2>Log Masuk Sistem</h2>
+            <p>Sila masukkan maklumat akaun rasmi anda</p>
+            
+            <form id="login-form" onsubmit="handleLogin(event)">
+                <div class="form-group">
+                    <label for="username">ID Pengguna / Kod Sekolah / NIP</label>
+                    <input type="text" id="username" placeholder="Contoh: JBA6001 atau PPD102" required>
                 </div>
+                <div class="form-group">
+                    <label for="password">Kata Laluan</label>
+                    <input type="password" id="password" placeholder="••••••••" required>
+                </div>
+                <div class="form-group">
+                    <label for="role">Peranan</label>
+                    <select id="role" required>
+                        <option value="headmaster">Guru Besar (Sekolah)</option>
+                        <option value="ppd_officer">Pegawai PPD Pontian</option>
+                    </select>
+                </div>
+                <div id="login-error" class="error-msg hidden">ID atau kata laluan tidak sah.</div>
+                <button type="submit" class="btn-primary">Log Masuk</button>
+            </form>
+            <div class="demo-box">
+                <p><b>Akaun Ujian (Demo):</b></p>
+                <small>Guru Besar: <code>JBA6001</code> / <code>123456</code></small><br>
+                <small>Pegawai PPD: <code>PPD102</code> / <code>123456</code></small>
+            </div>
+        </div>
+    </div>
+
+    <!-- MAIN CONTAINER -->
+    <main class="container">
+
+        <!-- GURU BESAR VIEW -->
+        <section id="headmaster-view" class="view-section hidden">
+            <div class="section-header">
+                <h2>Permohonan Aduan Penyelenggaraan Baru</h2>
+                <p>Borang penyerahan bukti kerosakan fizikal sekolah ke PPD Pontian via Google Drive</p>
             </div>
 
-            <!-- Deployment Banner Callout -->
-            <div class="bg-amber-50 border-l-4 border-amber-500 p-6 rounded-2xl shadow-sm mb-12 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-                <div class="flex items-start space-x-4">
-                    <div class="bg-amber-500 text-white p-3 rounded-xl shrink-0">
-                        <i class="fa-solid fa-server text-xl"></i>
+            <form id="report-form" class="card-form" onsubmit="submitReport(event)" enctype="multipart/form-data">
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label for="category">Kategori Kerosakan *</label>
+                        <select id="category" required>
+                            <option value="">-- Sila Pilih --</option>
+                            <option value="Bangunan">Bangunan & Dinding</option>
+                            <option value="Elektrik">Sistem Pendawaian Elektrik</option>
+                            <option value="Paip/Sanitasi">Paip & Sanitasi Tandas</option>
+                            <option value="Infrastruktur/Padang">Infrastruktur / Padang / Pagar</option>
+                            <option value="Lain-lain">Lain-lain Kerosakan</option>
+                        </select>
                     </div>
-                    <div>
-                        <h3 class="font-bold text-slate-900 text-lg">Bagaimana Mengoperasikan Website Ini 24/7 Tanpa PC Sentiasa Hidup?</h3>
-                        <p class="text-slate-600 text-sm mt-1">Gunakan platform awan percuma (Vercel/Netlify + GitHub + Supabase/Firebase) untuk memastikan web ini sentiasa accessible dari mana-mana sahaja.</p>
-                    </div>
-                </div>
-                <button onclick="openHostingGuide()" class="bg-ppdNavy hover:bg-ppdBlue text-white font-semibold px-5 py-2.5 rounded-xl text-sm transition shrink-0">
-                    <i class="fa-solid fa-book-open mr-2"></i>Baca Panduan Hosting
-                </button>
-            </div>
 
-            <!-- Features Grid -->
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-8 mb-12">
-                <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
-                    <div class="w-12 h-12 bg-blue-100 text-ppdBlue rounded-xl flex items-center justify-center text-xl font-bold mb-4">
-                        <i class="fa-solid fa-file-pdf"></i>
+                    <div class="form-group">
+                        <label for="priority">Tahap Keutamaan *</label>
+                        <select id="priority" required>
+                            <option value="Sederhana">Sederhana</option>
+                            <option value="Tinggi">Tinggi</option>
+                            <option value="Kecemasan">Kecemasan (Bahaya Fizikal)</option>
+                            <option value="Rendah">Rendah</option>
+                        </select>
                     </div>
-                    <h4 class="text-lg font-bold text-slate-900 mb-2">Dokumentasi Sah & Bukti Foto</h4>
-                    <p class="text-slate-600 text-sm">Sekolah boleh memuat naik Surat Rasmi (PDF) dan Gambar Bukti Kerosakan dengan fungsi pra-lihat (preview) secara terus.</p>
                 </div>
-                <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
-                    <div class="w-12 h-12 bg-amber-100 text-amber-700 rounded-xl flex items-center justify-center text-xl font-bold mb-4">
-                        <i class="fa-solid fa-[#0F2C59] fa-clock-rotate-left"></i>
+
+                <div class="form-group">
+                    <label for="title">Tajuk Ringkas Aduan *</label>
+                    <input type="text" id="title" placeholder="Contoh: Kerosakan Bumbung Bocor Blok A" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="description">Keterangan Terperinci Kerosakan *</label>
+                    <textarea id="description" rows="4" placeholder="Jelaskan lokasi kerosakan, tahap risiko, dan sejarah kerosakan..." required></textarea>
+                </div>
+
+                <!-- Image Upload Section -->
+                    <div class="form-group">
+                        <label for="photo_file">Muat Naik Gambar Kerosakan (Foto):</label>
+                            <input 
+                                type="file" 
+                                id="photo_file" 
+                                name="photo_file" 
+                                accept="image/*" 
+                                onchange="previewLocalImage(event)" 
+                            />
+                            
+                            <!-- Container ID: image-preview-container -->
+                            <div id="image-preview-container" class="hidden margin-top-sm">
+                                <img id="image-preview" src="" alt="Pratonton Gambar" style="max-width: 100%; max-height: 200px; border-radius: 6px;" />
+                            </div>
+                            </div>
+
+                            <!-- PDF Document Upload Section -->
+                            <div class="form-group">
+                            <label for="pdf_file">Muat Naik Surat Rasmi / Dokumen Sokongan (PDF):</label>
+                            <input 
+                                type="file" 
+                                id="pdf_file" 
+                                name="pdf_file" 
+                                accept="application/pdf" 
+                                onchange="previewLocalPdf(event)" 
+                            />
+                            
+                            <!-- Container ID: pdf-preview-info -->
+                            <div id="pdf-preview-info" class="hidden margin-top-sm">
+                            <span id="pdf-file-name" class="badge-info"></span>
+                        </div>
                     </div>
-                    <h4 class="text-lg font-bold text-slate-900 mb-2">Sistem Barisan FIFO</h4>
-                    <p class="text-slate-600 text-sm">Pegawai PPD memproses permohonan mengikut prinsip First-In-First-Out lengkap dengan pembilang hari permohonan aktif.</p>
-                </div>
-                <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
-                    <div class="w-12 h-12 bg-emerald-100 text-emerald-700 rounded-xl flex items-center justify-center text-xl font-bold mb-4">
-                        <i class="fa-solid fa-mobile-screen-button"></i>
-                    </div>
-                    <h4 class="text-lg font-bold text-slate-900 mb-2">Mesra Telefon & PC</h4>
-                    <p class="text-slate-600 text-sm">Akses dari mana-mana sahaja melalui telefon pintar atau komputer dengan pautan rasmi tanpa sebarang pemasangan khas.</p>
-                </div>
+
+                <button type="submit" id="submit-btn" class="btn-primary">Hantar Permohonan Aduan</button>
+            </form>
+
+            <!-- Past Reports List for School -->
+            <div class="history-section">
+                <h3>Senarai Aduan Sekolah Ini</h3>
+                <div id="school-history-list" class="report-list"></div>
             </div>
         </section>
 
-        <!-- ================= HEADMASTER DASHBOARD ================= -->
-        <section id="viewHeadmaster" class="hidden py-8 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
-            <!-- Header bar for dashboard -->
-            <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8 bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
-                <div>
-                    <span class="text-xs font-bold text-ppdBlue uppercase tracking-wider">Dashboard Sekolah</span>
-                    <h2 class="text-2xl font-bold text-slate-900 mt-1" id="hmSchoolTitle">SK Pontian Utama</h2>
-                    <p class="text-slate-500 text-sm">Hantar aduan baru atau semak status aduan pembaikan prasarana sekolah anda.</p>
-                </div>
-                <div class="flex items-center space-x-3">
-                    <button onclick="toggleHmTab('form')" id="btnTabForm" class="px-4 py-2 rounded-xl text-sm font-semibold transition bg-ppdNavy text-white">
-                        <i class="fa-solid fa-plus-circle mr-2"></i>Borang Aduan Baru
-                    </button>
-                    <button onclick="toggleHmTab('list')" id="btnTabList" class="px-4 py-2 rounded-xl text-sm font-semibold transition bg-slate-100 text-slate-700 hover:bg-slate-200">
-                        <i class="fa-solid fa-list-check mr-2"></i>Rekod & Status Aduan (<span id="hmReportCount">0</span>)
-                    </button>
-                </div>
+        <!-- PEGAWAI PPD VIEW (FIFO Queue) -->
+        <section id="ppd-view" class="view-section hidden">
+            <div class="section-header">
+                <h2>Senarai Menunggu Aduan (Sistem FIFO)</h2>
+                <p>Aduan disusun mengikut urutan tarikh penerimaan terawal (First-In, First-Out)</p>
             </div>
 
-            <!-- TAB 1: New Aduan Form -->
-            <div id="hmTabForm" class="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 sm:p-8">
-                <h3 class="text-xl font-bold text-slate-900 mb-6 pb-3 border-b border-slate-100 flex items-center">
-                    <i class="fa-solid fa-file-pen text-amber-500 mr-3"></i> Borang Permohonan Pembangunan / Pembaikan
-                </h3>
-
-                <form id="aduanForm" onsubmit="submitAduan(event)" class="space-y-6">
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <!-- School Selection -->
-                        <div>
-                            <label class="block text-sm font-semibold text-slate-700 mb-2">Nama Sekolah / Institusi</label>
-                            <select id="formSchool" required class="w-full bg-slate-50 border border-slate-300 rounded-xl p-3 text-sm focus:ring-2 focus:ring-ppdBlue focus:outline-none">
-                                <option value="">-- Pilih Sekolah --</option>
-                                <option value="SK Pontian Utama" selected>SK Pontian Utama (JBA6001)</option>
-                                <option value="SMK Datuk Ali Haji Ahmad">SMK Datuk Ali Haji Ahmad (JEA6002)</option>
-                                <option value="SK Bandar Pontian">SK Bandar Pontian (JBA6003)</option>
-                                <option value="SJK(C) Pei Chun 1">SJK(C) Pei Chun 1 (JBC6004)</option>
-                                <option value="SJK(T) Sri Pelangi">SJK(T) Sri Pelangi (JBD6005)</option>
-                                <option value="SK Kukup Laut">SK Kukup Laut (JBA6006)</option>
-                                <option value="SMK Sri Kukup">SMK Sri Kukup (JEA6007)</option>
-                                <option value="SK Benut">SK Benut (JBA6008)</option>
-                            </select>
-                        </div>
-
-                        <!-- Category -->
-                        <div>
-                            <label class="block text-sm font-semibold text-slate-700 mb-2">Kategori Pembangunan / Kerosakan</label>
-                            <select id="formCategory" required class="w-full bg-slate-50 border border-slate-300 rounded-xl p-3 text-sm focus:ring-2 focus:ring-ppdBlue focus:outline-none">
-                                <option value="">-- Pilih Kategori --</option>
-                                <option value="Struktur Bumbung / Siling">Struktur Bumbung / Siling</option>
-                                <option value="Pendawaian Elektrik / Lampu">Pendawaian Elektrik / Lampu</option>
-                                <option value="Sistem Paip / Tandas">Sistem Paip / Tandas</option>
-                                <option value="Kerosakan Pagaran / Keselamatan">Kerosakan Pagaran / Keselamatan</option>
-                                <option value="Retakan Dinding / Keretakan Bangunan">Retakan Dinding / Keretakan Bangunan</option>
-                                <option value="Kemudahan Sukan / Padang">Kemudahan Sukan / Padang</option>
-                                <option value="Lain-Lain">Lain-Lain</option>
-                            </select>
-                        </div>
-                    </div>
-
-                    <!-- Title -->
-                    <div>
-                        <label class="block text-sm font-semibold text-slate-700 mb-2">Tajuk Permohonan / Aduan</label>
-                        <input type="text" id="formTitle" placeholder="Contoh: Bumbung Blok A Bocor Teruk & Merosakkan Siling Makmal Sains" required class="w-full bg-slate-50 border border-slate-300 rounded-xl p-3 text-sm focus:ring-2 focus:ring-ppdBlue focus:outline-none">
-                    </div>
-
-                    <!-- Description & Budget -->
-                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-                        <div class="md:col-span-2">
-                            <label class="block text-sm font-semibold text-slate-700 mb-2">Penerangan Kerosakan & Justifikasi</label>
-                            <textarea id="formDescription" rows="4" placeholder="Jelaskan secara teliti lokasi, tahap kerosakan, dan implikasi keselamatan murid/guru..." required class="w-full bg-slate-50 border border-slate-300 rounded-xl p-3 text-sm focus:ring-2 focus:ring-ppdBlue focus:outline-none"></textarea>
-                        </div>
-                        <div>
-                            <label class="block text-sm font-semibold text-slate-700 mb-2">Anggaran Kos Pembaikan (RM)</label>
-                            <div class="relative">
-                                <span class="absolute left-3 top-3 text-slate-400 font-semibold text-sm">RM</span>
-                                <input type="number" id="formBudget" placeholder="15000" min="0" required class="w-full bg-slate-50 border border-slate-300 rounded-xl p-3 pl-10 text-sm focus:ring-2 focus:ring-ppdBlue focus:outline-none">
-                            </div>
-                            <p class="text-xs text-slate-400 mt-2">Nilaian anggaran kasar untuk tujuan tapisan awal PPD.</p>
-                        </div>
-                    </div>
-
-                    <!-- File Uploads with Previews -->
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4 border-t border-slate-100">
-                        <!-- Evidence Photo Upload -->
-                        <div class="bg-slate-50 p-4 rounded-xl border-2 border-dashed border-slate-300">
-                            <label class="block text-sm font-semibold text-slate-700 mb-2">
-                                <i class="fa-solid fa-camera text-ppdBlue mr-1"></i> Gambar Bukti Kerosakan (JPG/PNG)
-                            </label>
-                            <input type="file" id="formPhoto" accept="image/*" onchange="previewImage(event)" class="text-xs text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-ppdBlue file:text-white hover:file:bg-blue-800 cursor-pointer w-full">
-                            
-                            <!-- Image Preview Container -->
-                            <div id="photoPreviewBox" class="mt-3 hidden">
-                                <p class="text-xs font-semibold text-slate-500 mb-1">Pra-lihat Gambar:</p>
-                                <img id="photoPreviewImg" src="" alt="Preview" class="h-32 object-cover rounded-lg border border-slate-300 shadow-sm">
-                            </div>
-                        </div>
-
-                        <!-- Formal Letter Upload (PDF) -->
-                        <div class="bg-slate-50 p-4 rounded-xl border-2 border-dashed border-slate-300">
-                            <label class="block text-sm font-semibold text-slate-700 mb-2">
-                                <i class="fa-solid fa-file-pdf text-red-600 mr-1"></i> Surat Rasmi Permohonan (PDF)
-                            </label>
-                            <input type="file" id="formPdf" accept="application/pdf" onchange="previewPdfName(event)" class="text-xs text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-red-600 file:text-white hover:file:bg-red-700 cursor-pointer w-full">
-                            
-                            <!-- PDF Preview Info -->
-                            <div id="pdfPreviewBox" class="mt-3 hidden flex items-center space-x-2 bg-white p-2.5 rounded-lg border border-slate-200">
-                                <i class="fa-solid fa-file-pdf text-red-600 text-xl"></i>
-                                <div class="overflow-hidden">
-                                    <p id="pdfFileName" class="text-xs font-medium text-slate-800 truncate">surat_rasmi.pdf</p>
-                                    <span class="text-[10px] text-emerald-600 font-semibold"><i class="fa-solid fa-check"></i> Sedia Diunggah</span>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Submit Button -->
-                    <div class="flex justify-end pt-4">
-                        <button type="submit" class="bg-amber-500 hover:bg-amber-600 text-ppdNavy font-bold px-8 py-3 rounded-xl transition shadow-lg flex items-center space-x-2">
-                            <i class="fa-solid fa-paper-plane"></i>
-                            <span>Hantar Permohonan Aduan</span>
-                        </button>
-                    </div>
-                </form>
-            </div>
-
-            <!-- TAB 2: School Reports List -->
-            <div id="hmTabList" class="hidden bg-white rounded-2xl border border-slate-200 shadow-sm p-6 sm:p-8">
-                <h3 class="text-xl font-bold text-slate-900 mb-6 pb-3 border-b border-slate-100 flex items-center justify-between">
-                    <span><i class="fa-solid fa-clock-rotate-left text-ppdBlue mr-2"></i> Rekod Permohonan Sekolah Saya</span>
-                    <span class="text-xs bg-slate-100 text-slate-600 px-3 py-1 rounded-full">Kemas Kini Realtime</span>
-                </h3>
-
-                <div id="hmReportListContainer" class="space-y-4">
-                    <!-- Dynamic rendering of school reports -->
-                </div>
-            </div>
-        </section>
-
-        <!-- ================= PPD OFFICER DASHBOARD ================= -->
-        <section id="viewPPD" class="hidden py-8 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
-            <!-- PPD Header -->
-            <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm mb-8">
-                <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                    <div>
-                        <span class="text-xs font-bold text-amber-600 uppercase tracking-wider">Unit Pembangunan & Sektor Pengurusan PPD Pontian</span>
-                        <h2 class="text-2xl font-bold text-slate-900 mt-1">Sistem Pemprosesan Queue FIFO Permohonan</h2>
-                        <p class="text-slate-500 text-sm">Semua aduan diproses mengikut masa penerimaan terawal (First-In-First-Out).</p>
-                    </div>
-                    <!-- Quick Filters -->
-                    <div class="flex items-center bg-slate-100 p-1.5 rounded-xl border border-slate-200">
-                        <button onclick="filterPPDTab('queue')" id="ppdTabQueue" class="px-4 py-1.5 rounded-lg text-xs font-bold transition bg-ppdNavy text-white shadow-sm">
-                            <i class="fa-solid fa-arrow-down-short-wide mr-1"></i> Giliran Aktif (FIFO)
-                        </button>
-                        <button onclick="filterPPDTab('history')" id="ppdTabHistory" class="px-4 py-1.5 rounded-lg text-xs font-bold transition text-slate-600 hover:text-slate-900">
-                            <i class="fa-solid fa-square-check mr-1"></i> Rekod Selesai
-                        </button>
-                    </div>
-                </div>
-
-                <!-- KPI Metric Cards -->
-                <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-6 pt-6 border-t border-slate-100">
-                    <div class="bg-blue-50/60 p-4 rounded-xl border border-blue-100">
-                        <p class="text-xs font-medium text-slate-500">Keseluruhan Aduan Diterima</p>
-                        <p id="kpiTotal" class="text-2xl font-extrabold text-ppdNavy mt-1">0</p>
-                    </div>
-                    <div class="bg-amber-50/60 p-4 rounded-xl border border-amber-100">
-                        <p class="text-xs font-medium text-amber-800">Menunggu Tindakan / Aktif</p>
-                        <p id="kpiPending" class="text-2xl font-extrabold text-amber-600 mt-1">0</p>
-                    </div>
-                    <div class="bg-emerald-50/60 p-4 rounded-xl border border-emerald-100">
-                        <p class="text-xs font-medium text-emerald-800">Telah Diselesaikan</p>
-                        <p id="kpiCompleted" class="text-2xl font-extrabold text-emerald-600 mt-1">0</p>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Queue List Container -->
-            <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-6">
-                <div class="flex items-center justify-between mb-6 pb-3 border-b border-slate-100">
-                    <h3 class="text-lg font-bold text-slate-900 flex items-center">
-                        <i id="ppdSectionIcon" class="fa-solid fa-list-ol text-amber-500 mr-2.5"></i>
-                        <span id="ppdSectionTitle">Senarai Barisan Giliran Utama (FIFO)</span>
-                    </h3>
-                    <p class="text-xs text-slate-500 italic">Disusun automatik berdasarkan timestamp terawal</p>
-                </div>
-
-                <div id="ppdReportListContainer" class="space-y-4">
-                    <!-- Dynamic rendering of FIFO reports -->
-                </div>
-            </div>
+            <div id="fifo-queue-list" class="fifo-queue"></div>
         </section>
 
     </main>
 
-    <!-- ================= MODAL 1: LOGIN SIMULATION ================= -->
-    <div id="loginModal" class="fixed inset-0 bg-slate-900/60 modal-blur z-50 hidden flex items-center justify-center p-4">
-        <div class="bg-white rounded-3xl max-w-md w-full shadow-2xl border border-slate-200 overflow-hidden transform transition-all">
-            <div class="bg-ppdNavy p-6 text-white text-center relative">
-                <button onclick="closeLoginModal()" class="absolute right-4 top-4 text-slate-300 hover:text-white">
-                    <i class="fa-solid fa-xmark text-xl"></i>
-                </button>
-                <div class="w-12 h-12 bg-amber-500 text-ppdNavy rounded-2xl flex items-center justify-center mx-auto mb-3 text-xl font-bold">
-                    <i class="fa-solid fa-lock"></i>
-                </div>
-                <h3 class="text-xl font-bold">Log Masuk Portal</h3>
-                <p class="text-xs text-slate-300 mt-1">Sistem e-Aduan Pembangunan PPD Pontian</p>
-            </div>
-
-            <div class="p-6 space-y-6">
-                <div>
-                    <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-2">Pilih Peranan Anda</label>
-                    <div class="grid grid-cols-2 gap-3">
-                        <button onclick="demoLogin('guru')" class="p-3 border-2 border-slate-200 hover:border-ppdBlue rounded-xl text-center transition group">
-                            <i class="fa-solid fa-school text-2xl text-slate-400 group-hover:text-ppdBlue mb-1 block"></i>
-                            <span class="text-xs font-bold text-slate-700">Guru Besar / Pengetua</span>
-                        </button>
-                        <button onclick="demoLogin('ppd')" class="p-3 border-2 border-slate-200 hover:border-amber-500 rounded-xl text-center transition group">
-                            <i class="fa-solid fa-user-shield text-2xl text-slate-400 group-hover:text-amber-500 mb-1 block"></i>
-                            <span class="text-xs font-bold text-slate-700">Pegawai PPD</span>
-                        </button>
-                    </div>
-                </div>
-
-                <div class="bg-amber-50 p-3.5 rounded-xl border border-amber-200 text-xs text-amber-900">
-                    <p class="font-semibold mb-0.5"><i class="fa-solid fa-circle-info mr-1"></i> Mod Demonstrasi:</p>
-                    Klik mana-mana pilihan peranan di atas untuk log masuk secara serta-merta tanpa perlu memasukkan katalaluan.
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- ================= MODAL 2: DETAIL REPORT LIGHTBOX ================= -->
-    <div id="detailModal" class="fixed inset-0 bg-slate-900/60 modal-blur z-50 hidden flex items-center justify-center p-4">
-        <div class="bg-white rounded-3xl max-w-3xl w-full shadow-2xl border border-slate-200 overflow-hidden max-h-[90vh] flex flex-col">
-            <!-- Modal Header -->
-            <div class="bg-ppdNavy p-5 text-white flex justify-between items-center border-b border-amber-500">
-                <div class="flex items-center space-x-3">
-                    <span id="modalQueueBadge" class="bg-amber-500 text-ppdNavy font-extrabold text-xs px-3 py-1 rounded-full">Giliran #1</span>
-                    <h3 id="modalSchoolName" class="font-bold text-lg">Nama Sekolah</h3>
-                </div>
-                <button onclick="closeDetailModal()" class="text-slate-300 hover:text-white p-1">
-                    <i class="fa-solid fa-xmark text-2xl"></i>
-                </button>
-            </div>
-
-            <!-- Modal Content (Scrollable) -->
-            <div class="p-6 overflow-y-auto space-y-6">
-                <!-- Status & Metadata Bar -->
-                <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 bg-slate-50 p-4 rounded-xl border border-slate-200 text-xs">
-                    <div>
-                        <span class="text-slate-400 block">Status:</span>
-                        <span id="modalStatus" class="font-bold">Dihantar</span>
-                    </div>
-                    <div>
-                        <span class="text-slate-400 block">Masa Berlalu:</span>
-                        <span id="modalElapsed" class="font-bold text-amber-600">0 Hari</span>
-                    </div>
-                    <div>
-                        <span class="text-slate-400 block">Kategori:</span>
-                        <span id="modalCategory" class="font-semibold text-slate-800">-</span>
-                    </div>
-                    <div>
-                        <span class="text-slate-400 block">Anggaran Kos:</span>
-                        <span id="modalBudget" class="font-bold text-slate-800">RM 0</span>
-                    </div>
-                </div>
-
-                <!-- Title & Description -->
-                <div>
-                    <h4 id="modalTitle" class="text-lg font-bold text-slate-900 mb-2">Tajuk Aduan</h4>
-                    <p id="modalDescription" class="text-sm text-slate-600 leading-relaxed bg-slate-50/50 p-4 rounded-xl border border-slate-100">Penerangan ringkas...</p>
-                </div>
-
-                <!-- Attachment Previews -->
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
-                    <!-- Photo Evidence -->
-                    <div>
-                        <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-2">
-                            <i class="fa-solid fa-image text-ppdBlue mr-1"></i> Bukti Gambar
-                        </label>
-                        <div class="bg-slate-100 rounded-2xl p-2 border border-slate-200 text-center">
-                            <img id="modalImg" src="" alt="Bukti Gambar" class="max-h-56 w-full object-cover rounded-xl shadow-sm">
-                        </div>
-                    </div>
-
-                    <!-- PDF Letter Link / Mock Preview -->
-                    <div>
-                        <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-2">
-                            <i class="fa-solid fa-file-pdf text-red-600 mr-1"></i> Surat Rasmi Permohonan
-                        </label>
-                        <div class="bg-slate-50 border border-slate-200 rounded-2xl p-6 text-center flex flex-col items-center justify-center h-56">
-                            <i class="fa-solid fa-file-pdf text-5xl text-red-600 mb-3"></i>
-                            <p id="modalPdfName" class="text-xs font-semibold text-slate-800 truncate max-w-full px-2">surat_rasmi_sekolah.pdf</p>
-                            <span class="text-[10px] text-slate-400 mb-4">Dokumen Disahkan Guru Besar</span>
-                            <a id="modalPdfLink" href="#" target="_blank" onclick="alert('Ini adalah fail demonstrasi PDF permohonan rasmi sekolah.'); return false;" class="bg-ppdNavy hover:bg-ppdBlue text-white text-xs font-semibold px-4 py-2 rounded-lg transition shadow-sm inline-flex items-center space-x-1.5">
-                                <i class="fa-solid fa-arrow-down-to-line"></i>
-                                <span>Buka / Muat Turun PDF</span>
-                            </a>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Modal Footer Action -->
-            <div id="modalFooterAction" class="bg-slate-50 p-4 border-t border-slate-200 flex justify-end space-x-3">
-                <button onclick="closeDetailModal()" class="px-5 py-2.5 rounded-xl border border-slate-300 text-slate-600 font-medium text-xs hover:bg-slate-100 transition">Tutup</button>
-                <button id="modalCompleteBtn" onclick="" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-6 py-2.5 rounded-xl text-xs transition shadow-md flex items-center space-x-2">
-                    <i class="fa-solid fa-check"></i>
-                    <span>Tanda Sebagai Selesai</span>
-                </button>
-            </div>
-        </div>
-    </div>
-
-    <!-- ================= MODAL 3: 24/7 HOSTING & DEPLOYMENT GUIDE ================= -->
-    <div id="hostingGuideModal" class="fixed inset-0 bg-slate-900/60 modal-blur z-50 hidden flex items-center justify-center p-4">
-        <div class="bg-white rounded-3xl max-w-4xl w-full shadow-2xl border border-slate-200 overflow-hidden max-h-[92vh] flex flex-col">
-            <div class="bg-ppdNavy p-5 text-white flex justify-between items-center border-b border-amber-500">
-                <div class="flex items-center space-x-3">
-                    <i class="fa-solid fa-cloud text-amber-400 text-xl"></i>
-                    <h3 class="font-bold text-lg">Panduan Pelaksanaan Live Web 24/7 (VS Code + Cloud Hosting)</h3>
-                </div>
-                <button onclick="closeHostingGuide()" class="text-slate-300 hover:text-white p-1">
-                    <i class="fa-solid fa-xmark text-2xl"></i>
-                </button>
-            </div>
-
-            <div class="p-6 sm:p-8 overflow-y-auto space-y-8 text-sm text-slate-700">
-                <!-- Overview Concept -->
-                <div class="bg-blue-50 border-l-4 border-ppdBlue p-4 rounded-r-xl">
-                    <h4 class="font-bold text-ppdNavy text-base mb-1">Mengapa laman web boleh berfungsi 24/7 walaupun PC dipadamkan?</h4>
-                    <p class="text-xs leading-relaxed text-slate-600">
-                        Kod website yang dibina di dalam **VS Code** anda akan dimasukkan ke pelayan awan (**Cloud Server**) percuma seperti **Vercel** atau **Netlify**. Pelayan awan ini beroperasi 24 jam sehari di pusat data global. Database & simpanan fail fail PDF/Gambar pula disimpan di **Firebase** atau **Supabase**.
-                    </p>
-                </div>
-
-                <!-- Step by Step Architecture -->
-                <div class="space-y-6">
-                    <h4 class="font-bold text-slate-900 text-base border-b border-slate-200 pb-2">Langkah demi Langkah (Step-by-Step Implementation)</h4>
-
-                    <!-- Step 1 -->
-                    <div class="flex items-start space-x-4">
-                        <div class="bg-ppdNavy text-amber-400 font-extrabold w-8 h-8 rounded-full flex items-center justify-center shrink-0">1</div>
-                        <div>
-                            <h5 class="font-bold text-slate-900">Sediakan Kod dalam VS Code & Muat Naik ke GitHub</h5>
-                            <p class="text-xs text-slate-600 mt-1">
-                                1. Simpan kod `index.html` ini di dalam folder projek di VS Code.<br>
-                                2. Buka Terminal dalam VS Code dan jalankan arahan git:
-                            </p>
-                            <div class="bg-slate-900 text-amber-300 font-mono text-xs p-3 rounded-lg mt-2">
-                                git init<br>
-                                git add .<br>
-                                git commit -m "e-Aduan PPD Pontian Initial Commit"<br>
-                                git push origin main
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Step 2 -->
-                    <div class="flex items-start space-x-4">
-                        <div class="bg-ppdNavy text-amber-400 font-extrabold w-8 h-8 rounded-full flex items-center justify-center shrink-0">2</div>
-                        <div>
-                            <h5 class="font-bold text-slate-900">Sambungkan GitHub ke Vercel / Netlify (Free Hosting 24/7)</h5>
-                            <p class="text-xs text-slate-600 mt-1">
-                                1. Layari **Vercel.com** atau **Netlify.com** dan daftar secara percuma menggunakan akaun GitHub.<br>
-                                2. Pilih **"Add New Project"** -> Pilih Repository GitHub anda.<br>
-                                3. Klik **"Deploy"**. Dalam tempoh 1 minit, anda akan mendapat pautan rasmi unik (Contoh: `https://e-aduan-ppdpontian.vercel.app`).
-                            </p>
-                        </div>
-                    </div>
-
-                    <!-- Step 3 -->
-                    <div class="flex items-start space-x-4">
-                        <div class="bg-ppdNavy text-amber-400 font-extrabold w-8 h-8 rounded-full flex items-center justify-center shrink-0">3</div>
-                        <div>
-                            <h5 class="font-bold text-slate-900">Sambungkan Firebase / Supabase (Database Realtime & Storage PDF/Gambar)</h5>
-                            <p class="text-xs text-slate-600 mt-1">
-                                Untuk menyimpan aduan, fail PDF surat rasmi, dan bukti gambar kekal tanpa hilang:
-                            </p>
-                            <ul class="list-disc list-inside text-xs text-slate-600 mt-1 space-y-1">
-                                <li><strong>Auth:</strong> Memastikan hanya Guru Besar & Pegawai PPD disahkan sahaja boleh akses.</li>
-                                <li><strong>Firestore / Database:</strong> Menyimpan senarai aduan, masa hantar, dan status FIFO.</li>
-                                <li><strong>Storage:</strong> Tempat penyimpanan fail gambar bukti dan PDF rasmi.</li>
-                            </ul>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Sharing Link -->
-                <div class="bg-slate-100 p-4 rounded-xl border border-slate-200">
-                    <h5 class="font-bold text-slate-900 text-xs uppercase tracking-wider mb-1">Perkongsian Pautan (Shared Link)</h5>
-                    <p class="text-xs text-slate-600">Pautan domain dari Vercel boleh dikongsi terus melalui WhatsApp atau QR Code kepada semua Guru Besar di daerah Pontian dan boleh dibuka di mana-mana smartphone mahupun PC tanpa sebarang masalah compatibility.</p>
-                </div>
-            </div>
-
-            <div class="bg-slate-50 p-4 border-t border-slate-200 flex justify-end">
-                <button onclick="closeHostingGuide()" class="bg-ppdNavy text-white font-bold px-6 py-2 rounded-xl text-xs hover:bg-ppdBlue transition">Faham & Tutup</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- FOOTER -->
-    <footer class="bg-ppdNavy text-slate-400 text-xs py-6 border-t border-slate-800 mt-12">
-        <div class="max-w-7xl mx-auto px-4 text-center space-y-2">
-            <p class="font-semibold text-slate-300">Pejabat Pendidikan Daerah Pontian (PPD Pontian), Johor</p>
-            <p>© 2026 e-Aduan Permohonan Pembangunan. Hak Cipta Terpelihara.</p>
-        </div>
-    </footer>
-
-    <script>
-        /* ================= STATE MANAGEMENT ================= */
-        let currentUser = null; // { role: 'guru'|'ppd', name: '...' }
-        let currentFilterPPD = 'queue'; // 'queue' | 'history'
-
-        // Mock Initial Seed Data (FIFO)
-        let reports = [
-            {
-                id: 'ADU-2026-001',
-                school: 'SK Pontian Utama',
-                category: 'Struktur Bumbung / Siling',
-                title: 'Bumbung Bangunan Blok C Bocor Teruk Akibat Angin Kencang',
-                description: 'Bocor teruk di bahagian bilik darjah Tahun 4 & 5. Air hujan mula meresap ke pendawaian lampu dan menjejaskan keselamatan murid.',
-                budget: 25000,
-                status: 'Menunggu', // 'Menunggu', 'Dalam Tindakan', 'Selesai'
-                timestamp: new Date(Date.now() - 4 * 24 * 60 * 60 * 1000).toISOString(), // 4 days ago
-                photoUrl: 'https://images.unsplash.com/photo-1541888946425-d0fbb186a5b3?auto=format&fit=crop&w=600&q=80',
-                pdfName: 'Surat_Rasmi_SKPontianUtama_Bumbung.pdf'
-            },
-            {
-                id: 'ADU-2026-002',
-                school: 'SMK Datuk Ali Haji Ahmad',
-                category: 'Pendawaian Elektrik / Lampu',
-                title: 'Kerosakan Papan Agihan Elektrik (DB Board) Dewan Utama',
-                description: 'Kerap berlaku trip elektrik ketika perhimpunan rasmi. Bau terbakar dikesan pada suis utama.',
-                budget: 12000,
-                status: 'Menunggu',
-                timestamp: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(), // 2 days ago
-                photoUrl: 'https://images.unsplash.com/photo-1621905251189-08b45d6a269e?auto=format&fit=crop&w=600&q=80',
-                pdfName: 'Surat_SMK_DAHA_Elektrik.pdf'
-            },
-            {
-                id: 'ADU-2026-003',
-                school: 'SJK(C) Pei Chun 1',
-                category: 'Sistem Paip / Tandas',
-                title: 'Paip Utama Pecah Menyebabkan Gangguan Bekalan Air Tandas',
-                description: 'Tandas blok murid lelaki dan perempuan tidak dapat digunakan secara optimum. Memerlukan penukaran paip utama berdiameter 2 inci.',
-                budget: 8500,
-                status: 'Menunggu',
-                timestamp: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString(), // 1 day ago
-                photoUrl: 'https://images.unsplash.com/photo-1584622650111-993a426fbf0a?auto=format&fit=crop&w=600&q=80',
-                pdfName: 'Surat_Permohonan_PeiChun1.pdf'
-            },
-            {
-                id: 'ADU-2026-000',
-                school: 'SK Benut',
-                category: 'Kerosakan Pagaran / Keselamatan',
-                title: 'Pagar Utama Sekolah Tumbang Dihempap Pokok',
-                description: 'Pagar bahagian belakang berhampiran padang tumbang. Haiwan liar berisiko pencerobohan.',
-                budget: 6000,
-                status: 'Selesai',
-                timestamp: new Date(Date.now() - 8 * 24 * 60 * 60 * 1000).toISOString(),
-                completedAt: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString(),
-                photoUrl: 'https://images.unsplash.com/photo-1590069261209-f8e9b8642343?auto=format&fit=crop&w=600&q=80',
-                pdfName: 'Surat_Pagar_SK_Benut.pdf'
-            }
-        ];
-
-        /* Temporary Form Upload Memory */
-        let tempPhotoDataUrl = 'https://images.unsplash.com/photo-1503387762-592deb58ef4e?auto=format&fit=crop&w=600&q=80';
-        let tempPdfName = 'Surat_Rasmi_Permohonan.pdf';
-
-        /* ================= INITIALIZATION ================= */
-        window.onload = function() {
-            renderDashboard();
-        };
-
-        /* Calculate Days Elapsed from Timestamp */
-        function calculateDaysElapsed(timestamp) {
-            const now = new Date();
-            const past = new Date(timestamp);
-            const diffTime = Math.abs(now - past);
-            const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
-            return diffDays === 0 ? 'Hari Ini' : `${diffDays} Hari Berjalan`;
-        }
-
-        /* View Navigation Switcher */
-        function switchView(viewName) {
-            document.getElementById('viewLanding').classList.add('hidden');
-            document.getElementById('viewHeadmaster').classList.add('hidden');
-            document.getElementById('viewPPD').classList.add('hidden');
-
-            if (viewName === 'landing') {
-                document.getElementById('viewLanding').classList.remove('hidden');
-            } else if (viewName === 'guru') {
-                document.getElementById('viewHeadmaster').classList.remove('hidden');
-            } else if (viewName === 'ppd') {
-                document.getElementById('viewPPD').classList.remove('hidden');
-            }
-        }
-
-        /* Demo Login Function */
-        function demoLogin(role) {
-            if (role === 'guru') {
-                currentUser = {
-                    role: 'guru',
-                    name: 'Cikgu Ahmad (Guru Besar SK Pontian Utama)',
-                    school: 'SK Pontian Utama'
-                };
-                document.getElementById('hmSchoolTitle').innerText = currentUser.school;
-                switchView('guru');
-            } else {
-                currentUser = {
-                    role: 'ppd',
-                    name: 'Encik Razak (Pegawai Pembangunan PPD)',
-                    school: 'PPD Pontian'
-                };
-                switchView('ppd');
-            }
-
-            // Update UI User Badge
-            document.getElementById('navUserBadge').classList.remove('hidden');
-            document.getElementById('navUserName').innerText = currentUser.name;
-            document.getElementById('navUserRole').innerText = role === 'guru' ? 'Guru Besar / Pengetua' : 'Pegawai PPD';
-            document.getElementById('navLoginBtn').classList.add('hidden');
-
-            closeLoginModal();
-            renderDashboard();
-        }
-
-        function logout() {
-            currentUser = null;
-            document.getElementById('navUserBadge').classList.add('hidden');
-            document.getElementById('navLoginBtn').classList.remove('hidden');
-            switchView('landing');
-        }
-
-        /* ================= MODAL HANDLERS ================= */
-        function openLoginModal() {
-            document.getElementById('loginModal').classList.remove('hidden');
-        }
-        function closeLoginModal() {
-            document.getElementById('loginModal').classList.add('hidden');
-        }
-
-        function openHostingGuide() {
-            document.getElementById('hostingGuideModal').classList.remove('hidden');
-        }
-        function closeHostingGuide() {
-            document.getElementById('hostingGuideModal').classList.add('hidden');
-        }
-
-        function closeDetailModal() {
-            document.getElementById('detailModal').classList.add('hidden');
-        }
-
-        /* ================= FORM UPLOAD PREVIEW HANDLERS ================= */
-        function previewImage(event) {
-            const file = event.target.files[0];
-            if (file) {
-                const reader = new FileReader();
-                reader.onload = function(e) {
-                    tempPhotoDataUrl = e.target.result;
-                    document.getElementById('photoPreviewImg').src = e.target.result;
-                    document.getElementById('photoPreviewBox').classList.remove('hidden');
-                }
-                reader.readAsDataURL(file);
-            }
-        }
-
-        function previewPdfName(event) {
-            const file = event.target.files[0];
-            if (file) {
-                tempPdfName = file.name;
-                document.getElementById('pdfFileName').innerText = file.name;
-                document.getElementById('pdfPreviewBox').classList.remove('hidden');
-            }
-        }
-
-        /* Headmaster Submit Aduan */
-        function submitAduan(event) {
-            event.preventDefault();
-
-            const school = document.getElementById('formSchool').value;
-            const category = document.getElementById('formCategory').value;
-            const title = document.getElementById('formTitle').value;
-            const description = document.getElementById('formDescription').value;
-            const budget = document.getElementById('formBudget').value;
-
-            const newReport = {
-                id: `ADU-2026-${Math.floor(100 + Math.random() * 900)}`,
-                school: school,
-                category: category,
-                title: title,
-                description: description,
-                budget: parseFloat(budget),
-                status: 'Menunggu',
-                timestamp: new Date().toISOString(),
-                photoUrl: tempPhotoDataUrl,
-                pdfName: tempPdfName
-            };
-
-            // Add to state
-            reports.push(newReport);
-
-            // Reset form
-            document.getElementById('aduanForm').reset();
-            document.getElementById('photoPreviewBox').classList.add('hidden');
-            document.getElementById('pdfPreviewBox').classList.add('hidden');
-
-            alert('Permohonan Aduan Pembangunan Berjaya Dihantar! Laporan kini dimasukkan ke dalam Senarai Queue FIFO PPD Pontian.');
-            
-            // Switch to list tab
-            toggleHmTab('list');
-            renderDashboard();
-        }
-
-        /* Headmaster Dashboard Tab Switch */
-        function toggleHmTab(tab) {
-            const btnForm = document.getElementById('btnTabForm');
-            const btnList = document.getElementById('btnTabList');
-            const formSection = document.getElementById('hmTabForm');
-            const listSection = document.getElementById('hmTabList');
-
-            if (tab === 'form') {
-                btnForm.className = "px-4 py-2 rounded-xl text-sm font-semibold transition bg-ppdNavy text-white";
-                btnList.className = "px-4 py-2 rounded-xl text-sm font-semibold transition bg-slate-100 text-slate-700 hover:bg-slate-200";
-                formSection.classList.remove('hidden');
-                listSection.classList.add('hidden');
-            } else {
-                btnList.className = "px-4 py-2 rounded-xl text-sm font-semibold transition bg-ppdNavy text-white";
-                btnForm.className = "px-4 py-2 rounded-xl text-sm font-semibold transition bg-slate-100 text-slate-700 hover:bg-slate-200";
-                listSection.classList.remove('hidden');
-                formSection.classList.add('hidden');
-            }
-        }
-
-        /* PPD Tab Switch */
-        function filterPPDTab(filter) {
-            currentFilterPPD = filter;
-            const btnQueue = document.getElementById('ppdTabQueue');
-            const btnHistory = document.getElementById('ppdTabHistory');
-            const sectionTitle = document.getElementById('ppdSectionTitle');
-            const sectionIcon = document.getElementById('ppdSectionIcon');
-
-            if (filter === 'queue') {
-                btnQueue.className = "px-4 py-1.5 rounded-lg text-xs font-bold transition bg-ppdNavy text-white shadow-sm";
-                btnHistory.className = "px-4 py-1.5 rounded-lg text-xs font-bold transition text-slate-600 hover:text-slate-900";
-                sectionTitle.innerText = "Senarai Barisan Giliran Utama (FIFO)";
-                sectionIcon.className = "fa-solid fa-list-ol text-amber-500 mr-2.5";
-            } else {
-                btnHistory.className = "px-4 py-1.5 rounded-lg text-xs font-bold transition bg-ppdNavy text-white shadow-sm";
-                btnQueue.className = "px-4 py-1.5 rounded-lg text-xs font-bold transition text-slate-600 hover:text-slate-900";
-                sectionTitle.innerText = "Rekod Aduan Selesai / Past Reports";
-                sectionIcon.className = "fa-solid fa-square-check text-emerald-500 mr-2.5";
-            }
-            renderDashboard();
-        }
-
-        /* Mark Report as Completed (FIFO Action) */
-        function markCompleted(id) {
-            const r = reports.find(item => item.id === id);
-            if (r) {
-                r.status = 'Selesai';
-                r.completedAt = new Date().toISOString();
-                closeDetailModal();
-                renderDashboard();
-            }
-        }
-
-        /* Open Detailed Lightbox Modal */
-        function openDetailModal(id) {
-            const r = reports.find(item => item.id === id);
-            if (!r) return;
-
-            // Compute Queue Position if pending
-            const pendingList = reports
-                .filter(i => i.status === 'Menunggu')
-                .sort((a,b) => new Date(a.timestamp) - new Date(b.timestamp));
-            
-            const queueIndex = pendingList.findIndex(i => i.id === r.id);
-
-            const queueBadge = document.getElementById('modalQueueBadge');
-            if (r.status === 'Selesai') {
-                queueBadge.innerText = 'Selesai';
-                queueBadge.className = 'bg-emerald-500 text-white font-extrabold text-xs px-3 py-1 rounded-full';
-            } else {
-                queueBadge.innerText = `Giliran FIFO #${queueIndex + 1}`;
-                queueBadge.className = 'bg-amber-500 text-ppdNavy font-extrabold text-xs px-3 py-1 rounded-full';
-            }
-
-            document.getElementById('modalSchoolName').innerText = r.school;
-            document.getElementById('modalTitle').innerText = r.title;
-            document.getElementById('modalDescription').innerText = r.description;
-            document.getElementById('modalCategory').innerText = r.category;
-            document.getElementById('modalBudget').innerText = `RM ${r.budget.toLocaleString()}`;
-            document.getElementById('modalElapsed').innerText = calculateDaysElapsed(r.timestamp);
-            document.getElementById('modalStatus').innerText = r.status;
-            document.getElementById('modalImg').src = r.photoUrl;
-            document.getElementById('modalPdfName').innerText = r.pdfName;
-
-            // Footer complete button setup
-            const completeBtn = document.getElementById('modalCompleteBtn');
-            if (r.status === 'Selesai' || (currentUser && currentUser.role !== 'ppd')) {
-                completeBtn.classList.add('hidden');
-            } else {
-                completeBtn.classList.remove('hidden');
-                completeBtn.onclick = function() { markCompleted(r.id); };
-            }
-
-            document.getElementById('detailModal').classList.remove('hidden');
-        }
-
-        /* Main Render Function */
-        function renderDashboard() {
-            // Sort reports FIFO (Oldest first for queue)
-            const sortedQueue = [...reports]
-                .filter(r => r.status === 'Menunggu')
-                .sort((a,b) => new Date(a.timestamp) - new Date(b.timestamp));
-
-            const completedList = [...reports]
-                .filter(r => r.status === 'Selesai')
-                .sort((a,b) => new Date(b.completedAt || b.timestamp) - new Date(a.completedAt || a.timestamp));
-
-            // KPI Counts
-            document.getElementById('kpiTotal').innerText = reports.length;
-            document.getElementById('kpiPending').innerText = sortedQueue.length;
-            document.getElementById('kpiCompleted').innerText = completedList.length;
-
-            // Update HM Report Count Badge
-            const hmList = reports.filter(r => !currentUser || r.school === currentUser.school);
-            document.getElementById('hmReportCount').innerText = hmList.length;
-
-            /* 1. Render Headmaster List */
-            const hmContainer = document.getElementById('hmReportListContainer');
-            hmContainer.innerHTML = '';
-
-            if (hmList.length === 0) {
-                hmContainer.innerHTML = `<p class="text-sm text-slate-400 text-center py-8">Tiada rekod aduan dijumpai untuk sekolah ini.</p>`;
-            } else {
-                hmList.forEach((r, idx) => {
-                    const elapsed = calculateDaysElapsed(r.timestamp);
-                    const isDone = r.status === 'Selesai';
-
-                    const card = document.createElement('div');
-                    card.className = "bg-slate-50 hover:bg-blue-50/40 p-4 sm:p-5 rounded-2xl border border-slate-200 transition flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4";
-                    card.innerHTML = `
-                        <div class="flex items-start space-x-4">
-                            <img src="${r.photoUrl}" alt="Bukti" class="w-16 h-16 object-cover rounded-xl border border-slate-200 shrink-0">
-                            <div>
-                                <div class="flex items-center space-x-2">
-                                    <span class="text-[10px] font-bold px-2 py-0.5 rounded-full ${isDone ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-800'}">
-                                        ${r.status}
-                                    </span>
-                                    <span class="text-xs text-slate-400">• ${elapsed}</span>
-                                </div>
-                                <h4 class="font-bold text-slate-900 text-sm sm:text-base mt-1 line-clamp-1">${r.title}</h4>
-                                <p class="text-xs text-slate-500 mt-0.5">Kategori: ${r.category} | Anggaran: RM ${r.budget.toLocaleString()}</p>
-                            </div>
-                        </div>
-                        <button onclick="openDetailModal('${r.id}')" class="bg-white border border-slate-300 hover:border-ppdBlue text-slate-700 hover:text-ppdBlue px-4 py-2 rounded-xl text-xs font-semibold transition shrink-0 w-full sm:w-auto">
-                            <i class="fa-solid fa-eye mr-1"></i> Lihat Lanjut
-                        </button>
-                    `;
-                    hmContainer.appendChild(card);
-                });
-            }
-
-            /* 2. Render PPD FIFO Queue List or History */
-            const ppdContainer = document.getElementById('ppdReportListContainer');
-            ppdContainer.innerHTML = '';
-
-            const listToRender = currentFilterPPD === 'queue' ? sortedQueue : completedList;
-
-            if (listToRender.length === 0) {
-                ppdContainer.innerHTML = `
-                    <div class="text-center py-12 bg-slate-50 rounded-2xl border border-dashed border-slate-200">
-                        <i class="fa-solid fa-clipboard-check text-4xl text-slate-300 mb-2 block"></i>
-                        <p class="text-sm text-slate-500">Tiada senarai aduan dalam kategori ini.</p>
-                    </div>
-                `;
-            } else {
-                listToRender.forEach((r, index) => {
-                    const elapsed = calculateDaysElapsed(r.timestamp);
-                    const isQueue = currentFilterPPD === 'queue';
-
-                    const item = document.createElement('div');
-                    item.className = `p-5 rounded-2xl border transition flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4 ${index === 0 && isQueue ? 'bg-amber-50/70 border-amber-300 shadow-sm' : 'bg-slate-50 border-slate-200 hover:bg-slate-100/80'}`;
-
-                    item.innerHTML = `
-                        <div class="flex items-start space-x-4 w-full lg:w-auto">
-                            <!-- FIFO Queue Number Badge -->
-                            <div class="flex flex-col items-center justify-center shrink-0">
-                                <span class="text-[10px] font-bold text-slate-400 uppercase">Giliran</span>
-                                <span class="w-10 h-10 ${index === 0 && isQueue ? 'bg-amber-500 text-ppdNavy' : 'bg-slate-800 text-white'} rounded-xl flex items-center justify-center font-extrabold text-base shadow-sm">
-                                    #${index + 1}
-                                </span>
-                            </div>
-
-                            <!-- Thumbnail -->
-                            <img src="${r.photoUrl}" alt="Bukti" class="w-20 h-20 object-cover rounded-xl border border-slate-200 shrink-0">
-
-                            <!-- Content Details -->
-                            <div class="flex-grow">
-                                <div class="flex flex-wrap items-center gap-2">
-                                    <span class="text-xs font-extrabold text-ppdNavy bg-blue-100 px-2.5 py-0.5 rounded-md">${r.school}</span>
-                                    <span class="text-xs font-semibold text-amber-700 bg-amber-100/80 px-2 py-0.5 rounded-md">
-                                        <i class="fa-solid fa-clock mr-1"></i>${elapsed}
-                                    </span>
-                                    <span class="text-xs text-slate-400">Dihantar: ${new Date(r.timestamp).toLocaleDateString('ms-MY')}</span>
-                                </div>
-                                <h4 class="font-bold text-slate-900 text-base mt-1.5">${r.title}</h4>
-                                <p class="text-xs text-slate-600 line-clamp-1 mt-0.5">${r.description}</p>
-                            </div>
-                        </div>
-
-                        <!-- Action Buttons -->
-                        <div class="flex items-center space-x-2 w-full lg:w-auto justify-end pt-3 lg:pt-0 border-t lg:border-t-0 border-slate-200">
-                            <button onclick="openDetailModal('${r.id}')" class="bg-white border border-slate-300 hover:bg-slate-100 text-slate-700 font-semibold px-4 py-2.5 rounded-xl text-xs transition flex items-center space-x-1.5">
-                                <i class="fa-solid fa-magnifying-glass"></i>
-                                <span>Semak Detail</span>
-                            </button>
-                            ${isQueue ? `
-                                <button onclick="markCompleted('${r.id}')" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-4 py-2.5 rounded-xl text-xs transition shadow-md flex items-center space-x-1.5">
-                                    <i class="fa-solid fa-check"></i>
-                                    <span>Tanda Selesai</span>
-                                </button>
-                            ` : ''}
-                        </div>
-                    `;
-                    ppdContainer.appendChild(item);
-                });
-            }
-        }
-    </script>
+    <script src="app.js"></script>
 </body>
 </html>

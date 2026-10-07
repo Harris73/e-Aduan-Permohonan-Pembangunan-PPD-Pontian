@@ -1,0 +1,7 @@
+SUPABASE_URL=https://xlokucdgkiztwzuywemj.supabase.co
+SUPABASE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inhsb2t1Y2Rna2l6dHd6dXl3ZW1qIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTA4ODQ0MzIsImV4cCI6MjEwNjQ2MDQzMn0.kF0GKvwqr1NRUxCBL7dd9OLyL1JPY-dR-gqqBeqBCC0
+GDRIVE_FOLDER_ID=1lTMtuKa9jOhBc1WzAPxf1LFeTOBjaZZI
+GDRIVE_CLIENT_EMAIL=aduan-drive-uploader@e-aduan-storage.iam.gserviceaccount.com
+GDRIVE_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\na045f758fba251aadbdea5199f3d5d4133247b5b\n-----END PRIVATE KEY-----"
+# Local Netlify folder
+.netlify
