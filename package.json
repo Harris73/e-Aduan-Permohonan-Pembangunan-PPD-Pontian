@@ -1,27 +1,13 @@
 {
   "name": "e-aduan-permohonan-pembangunan-ppd-pontian",
-  "version": "1.0.0",
-  "description": "",
-  "main": "app.js",
-  "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
-  },
+  "version": "2.0.0",
+  "private": true,
+  "license": "ISC",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/Harris73/e-Aduan-Permohonan-Pembangunan-PPD-Pontian.git"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "type": "commonjs",
-  "bugs": {
-    "url": "https://github.com/Harris73/e-Aduan-Permohonan-Pembangunan-PPD-Pontian/issues"
-  },
-  "homepage": "https://github.com/Harris73/e-Aduan-Permohonan-Pembangunan-PPD-Pontian#readme",
   "dependencies": {
-    "@supabase/supabase-js": "^2.117.2",
-    "busboy": "^1.6.0",
-    "dotenv": "^18.0.5",
-    "googleapis": "^182.0.0"
+    "@supabase/supabase-js": "^2.117.2"
   }
 }

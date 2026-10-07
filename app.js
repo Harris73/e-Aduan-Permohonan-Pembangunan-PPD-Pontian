@@ -1,313 +1,316 @@
 // ==========================================
 // e-Aduan Penyelenggaraan PPD Pontian
+// Netlify (static) + Supabase (Auth, Postgres, Storage)
 // ==========================================
 
-// Supabase Configuration
 const SUPABASE_URL = 'https://xlokucdgkiztwzuywemj.supabase.co';
-const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inhsb2t1Y2Rna2l6dHd6dXl3ZW1qIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTA4ODQ0MzIsImV4cCI6MjEwNjQ2MDQzMn0.kF0GKvwqr1NRUxCBL7dd9OLyL1JPY-dR-gqqBeqBCC0';
-const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+// Public "anon" key only (never the service_role key). Paste your existing anon key here.
+const SUPABASE_ANON_KEY = 'PASTE_YOUR_ANON_KEY_HERE';
 
-// Mock Users for Demo Authentication
-const MOCK_USERS = [
-    { username: 'JBA6001', password: '123456', role: 'headmaster', name: 'SK Pontian Utama (JBA6001)' },
-    { username: 'PPD102',  password: '123456', role: 'ppd_officer', name: 'Pegawai Pembangunan PPD Pontian' }
-];
+const EMAIL_DOMAIN = 'aduan.ppdpontian.my'; // username -> username@EMAIL_DOMAIN (see schema.sql step 6)
+const BUCKET = 'evidence';
+const MAX_PDF_BYTES = 5 * 1024 * 1024;
 
-let currentUser = null;
+const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+let profile = null;
 
-document.addEventListener('DOMContentLoaded', () => {
-    checkSession();
+// ---------- helpers ----------
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s ?? '').replace(/[&<>"']/g,
+    (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
+document.addEventListener('DOMContentLoaded', async () => {
+    const { data } = await sb.auth.getSession();
+    await applySession(data.session);
+    sb.auth.onAuthStateChange((event) => {
+        if (event === 'SIGNED_OUT') showLogin();
+    });
 });
 
 // ==========================================
-// 1. Google Drive Link Helpers & Instant Previews
+// 1. Authentication (Supabase Auth, role from profiles table)
 // ==========================================
 
-// Helper: Extract Google Drive File ID from standard, share, or embed URLs
-function extractGDriveId(url) {
-    if (!url) return null;
-    const match = url.match(/\/d\/([a-zA-Z0-9_-]+)/) || 
-                  url.match(/id=([a-zA-Z0-9_-]+)/) ||
-                  url.match(/\/file\/d\/([a-zA-Z0-9_-]+)/);
-    return match ? match[1] : null;
-}
-
-// Convert Google Drive link to direct display image thumbnail (via Google CDN)
-function getGDriveDirectImgUrl(driveUrl) {
-    const fileId = extractGDriveId(driveUrl);
-    return fileId ? `https://lh3.googleusercontent.com/d/${fileId}=s800` : driveUrl;
-}
-
-// Convert Google Drive link to direct PDF viewer preview
-function getGDrivePdfViewUrl(driveUrl) {
-    const fileId = extractGDriveId(driveUrl);
-    return fileId ? `https://drive.google.com/file/d/${fileId}/preview` : driveUrl;
-}
-
-// Real-time Photo Preview Handler
-function processPhotoGdriveLink() {
-    const inputUrl = document.getElementById('gdrive_photo_link').value.trim();
-    const previewContainer = document.getElementById('image-preview-container');
-    const previewImg = document.getElementById('image-preview');
-
-    if (inputUrl) {
-        previewImg.src = getGDriveDirectImgUrl(inputUrl);
-        previewContainer.classList.remove('hidden');
-    } else {
-        previewContainer.classList.add('hidden');
-    }
-}
-
-function handleImageError() {
-    document.getElementById('image-preview').src = 'https://via.placeholder.com/400x200?text=Pastikan+Akses+GDrive+Satu+Dunia+(Anyone+with+link)';
-}
-
-// Real-time PDF Preview Handler
-function processPdfGdriveLink() {
-    const inputUrl = document.getElementById('gdrive_pdf_link').value.trim();
-    const previewInfo = document.getElementById('pdf-preview-info');
-    const previewUrl = document.getElementById('pdf-preview-url');
-
-    if (inputUrl) {
-        previewUrl.href = getGDrivePdfViewUrl(inputUrl);
-        previewInfo.classList.remove('hidden');
-    } else {
-        previewInfo.classList.add('hidden');
-    }
-}
-
-// ==========================================
-// 2. Authentication & Session Management
-// ==========================================
-
-function handleLogin(e) {
+async function handleLogin(e) {
     e.preventDefault();
-    const u = document.getElementById('username').value.trim();
-    const p = document.getElementById('password').value.trim();
-    const r = document.getElementById('role').value;
+    const username = $('username').value.trim().toLowerCase();
+    const password = $('password').value;
+    const btn = $('login-btn');
 
-    const user = MOCK_USERS.find(x => x.username.toUpperCase() === u.toUpperCase() && x.password === p && x.role === r);
+    btn.disabled = true;
+    $('login-error').classList.add('hidden');
 
-    if (user) {
-        currentUser = user;
-        localStorage.setItem('eaduan_user', JSON.stringify(user));
-        document.getElementById('login-error').classList.add('hidden');
-        checkSession();
+    const { data, error } = await sb.auth.signInWithPassword({
+        email: `${username}@${EMAIL_DOMAIN}`,
+        password,
+    });
+
+    btn.disabled = false;
+    if (error) {
+        $('login-error').classList.remove('hidden');
+        return;
+    }
+    $('password').value = '';
+    await applySession(data.session);
+}
+
+function showLogin() {
+    profile = null;
+    $('login-modal').classList.remove('hidden');
+    $('user-session').classList.add('hidden');
+    $('headmaster-view').classList.add('hidden');
+    $('ppd-view').classList.add('hidden');
+}
+
+async function applySession(session) {
+    if (!session) return showLogin();
+
+    const { data, error } = await sb.from('profiles').select('*').eq('id', session.user.id).single();
+    if (error || !data) {
+        alert('Akaun anda belum didaftarkan dalam sistem. Sila hubungi pentadbir PPD.');
+        await sb.auth.signOut();
+        return;
+    }
+    profile = data;
+
+    $('login-modal').classList.add('hidden');
+    $('user-session').classList.remove('hidden');
+    $('nav-user-name').textContent = 'Log Masuk: ' + profile.full_name;
+    $('nav-user-role').textContent = profile.role === 'headmaster' ? 'Guru Besar' : 'Pegawai PPD';
+
+    if (profile.role === 'headmaster') {
+        $('headmaster-view').classList.remove('hidden');
+        $('ppd-view').classList.add('hidden');
+        fetchSchoolHistory();
     } else {
-        document.getElementById('login-error').classList.remove('hidden');
+        $('ppd-view').classList.remove('hidden');
+        $('headmaster-view').classList.add('hidden');
+        fetchFifoQueue();
     }
 }
 
-function checkSession() {
-    const saved = localStorage.getItem('eaduan_user');
-    if (saved) currentUser = JSON.parse(saved);
-
-    if (currentUser) {
-        document.getElementById('login-modal').classList.add('hidden');
-        document.getElementById('user-session').classList.remove('hidden');
-        document.getElementById('nav-user-name').innerHTML = `<b>Log Masuk:</b> ${currentUser.name}`;
-        document.getElementById('nav-user-role').innerText = currentUser.role === 'headmaster' ? 'Guru Besar' : 'Pegawai PPD';
-
-        if (currentUser.role === 'headmaster') {
-            document.getElementById('headmaster-view').classList.remove('hidden');
-            document.getElementById('ppd-view').classList.add('hidden');
-            fetchSchoolHistory();
-        } else {
-            document.getElementById('ppd-view').classList.remove('hidden');
-            document.getElementById('headmaster-view').classList.add('hidden');
-            fetchFifoQueue();
-        }
-    } else {
-        document.getElementById('login-modal').classList.remove('hidden');
-        document.getElementById('user-session').classList.add('hidden');
-    }
-}
-
-function logout() {
-    localStorage.removeItem('eaduan_user');
-    currentUser = null;
-    location.reload();
+async function logout() {
+    await sb.auth.signOut();
 }
 
 // ==========================================
-// 3. Submit Report (Direct to Supabase 24/7)
+// 2. Local file previews
+// ==========================================
+
+function previewLocalImage(event) {
+    const file = event.target.files[0];
+    const box = $('image-preview-container');
+    if (!file) return box.classList.add('hidden');
+    $('image-preview').src = URL.createObjectURL(file);
+    box.classList.remove('hidden');
+}
+
+function previewLocalPdf(event) {
+    const file = event.target.files[0];
+    const box = $('pdf-preview-info');
+    if (!file) return box.classList.add('hidden');
+    $('pdf-file-name').textContent = `📄 ${file.name} (${(file.size / 1024 / 1024).toFixed(2)} MB)`;
+    box.classList.remove('hidden');
+}
+
+// Shrink phone photos (often 4-8 MB) to ~200-400 KB so the 1 GB free storage lasts
+async function compressImage(file, maxDim = 1600, quality = 0.8) {
+    let bmp;
+    try {
+        bmp = await createImageBitmap(file);
+    } catch {
+        throw new Error('Format gambar tidak disokong. Sila guna JPG, PNG atau WebP.');
+    }
+    const scale = Math.min(1, maxDim / Math.max(bmp.width, bmp.height));
+    const canvas = document.createElement('canvas');
+    canvas.width = Math.round(bmp.width * scale);
+    canvas.height = Math.round(bmp.height * scale);
+    canvas.getContext('2d').drawImage(bmp, 0, 0, canvas.width, canvas.height);
+    return new Promise((resolve, reject) =>
+        canvas.toBlob((b) => (b ? resolve(b) : reject(new Error('Gagal memampat gambar.'))), 'image/jpeg', quality));
+}
+
+async function uploadEvidence(blob, ext, contentType) {
+    const path = `${profile.id}/${crypto.randomUUID()}.${ext}`;
+    const { error } = await sb.storage.from(BUCKET).upload(path, blob, { contentType, upsert: false });
+    if (error) throw error;
+    return path;
+}
+
+// ==========================================
+// 3. Submit report (files -> Storage, row -> Postgres)
 // ==========================================
 
 async function submitReport(e) {
     e.preventDefault();
-
-    const photoUrlInput = document.getElementById('gdrive_photo_link').value.trim();
-    const pdfUrlInput   = document.getElementById('gdrive_pdf_link').value.trim();
-    const submitBtn     = document.getElementById('btn-submit');
-    const originalText  = submitBtn ? submitBtn.innerText : 'Hantar Permohonan Aduan';
-
-    if (submitBtn) {
-        submitBtn.disabled = true;
-        submitBtn.innerText = 'Menghantar aduan ke sistem PPD...';
-    }
-
-    const refNo = 'ADU-' + new Date().toISOString().slice(0, 10).replace(/-/g, '') + '-' + Math.floor(1000 + Math.random() * 9000);
-
-    const newReport = {
-        ref_no: refNo,
-        school_name: currentUser ? currentUser.name : 'SK Pontian Utama',
-        category: document.getElementById('category').value,
-        title: document.getElementById('title').value.trim(),
-        description: document.getElementById('description').value.trim(),
-        priority: document.getElementById('priority').value,
-        gdrive_photo_link: photoUrlInput,
-        gdrive_pdf_link: pdfUrlInput,
-        status: 'Menunggu'
-    };
+    const btn = $('submit-btn');
+    const originalText = btn.textContent;
+    const uploaded = [];
 
     try {
-        const { data, error } = await _supabase.from('reports').insert([newReport]).select();
+        const photo = $('photo_file').files[0];
+        const pdf = $('pdf_file').files[0];
 
-        if (error) {
-            alert('Ralat menyimpan ke Supabase: ' + error.message);
-        } else {
-            alert('Aduan berjaya dihantar ke PPD Pontian 24/7!\n\nNo Rujukan: ' + refNo);
-            document.getElementById('report-form').reset();
-            document.getElementById('image-preview-container').classList.add('hidden');
-            document.getElementById('pdf-preview-info').classList.add('hidden');
-            fetchSchoolHistory();
+        if (pdf && pdf.type !== 'application/pdf') throw new Error('Dokumen sokongan mesti dalam format PDF.');
+        if (pdf && pdf.size > MAX_PDF_BYTES) throw new Error('Saiz PDF melebihi 5 MB.');
+
+        btn.disabled = true;
+        btn.textContent = 'Memuat naik fail & menghantar aduan...';
+
+        let photo_path = null;
+        let pdf_path = null;
+
+        if (photo) {
+            const blob = await compressImage(photo);
+            photo_path = await uploadEvidence(blob, 'jpg', 'image/jpeg');
+            uploaded.push(photo_path);
         }
+        if (pdf) {
+            pdf_path = await uploadEvidence(pdf, 'pdf', 'application/pdf');
+            uploaded.push(pdf_path);
+        }
+
+        const { data, error } = await sb.from('reports').insert({
+            category: $('category').value,
+            priority: $('priority').value,
+            title: $('title').value.trim(),
+            description: $('description').value.trim(),
+            photo_path,
+            pdf_path,
+        }).select('ref_no').single();
+
+        if (error) throw error;
+
+        alert('Aduan berjaya dihantar ke PPD Pontian!\n\nNo Rujukan: ' + data.ref_no);
+        $('report-form').reset();
+        $('image-preview-container').classList.add('hidden');
+        $('pdf-preview-info').classList.add('hidden');
+        fetchSchoolHistory();
     } catch (err) {
-        console.error('Error submitting report:', err);
-        alert('Ralat sistem: ' + err.message);
+        console.error('submitReport:', err);
+        if (uploaded.length) await sb.storage.from(BUCKET).remove(uploaded); // roll back orphan files
+        alert('Ralat: ' + (err.message || err));
     } finally {
-        if (submitBtn) {
-            submitBtn.disabled = false;
-            submitBtn.innerText = originalText;
-        }
+        btn.disabled = false;
+        btn.textContent = originalText;
     }
 }
 
 // ==========================================
-// 4. Query Pending FIFO Queue for PPD Officer
+// 4. Signed URLs for private files
+// ==========================================
+
+async function signedUrlMap(paths) {
+    const list = [...new Set(paths.filter(Boolean))];
+    if (!list.length) return {};
+    const { data } = await sb.storage.from(BUCKET).createSignedUrls(list, 3600);
+    const map = {};
+    (data || []).forEach((d) => { if (d.signedUrl) map[d.path] = d.signedUrl; });
+    return map;
+}
+
+// ==========================================
+// 5. PPD officer: FIFO queue
 // ==========================================
 
 async function fetchFifoQueue() {
-    const container = document.getElementById('fifo-queue-list');
+    const container = $('fifo-queue-list');
     container.innerHTML = '<p>Memuatkan senarai FIFO aduan...</p>';
 
-    // Fetch reports where status != 'Selesai', ordered by submission date (Oldest first for FIFO)
-    const { data: pending, error } = await _supabase
+    const { data: pending, error } = await sb
         .from('reports')
         .select('*')
         .neq('status', 'Selesai')
-        .order('submitted_at', { ascending: true });
+        .order('submitted_at', { ascending: true })
+        .limit(100);
 
     if (error) {
-        container.innerHTML = '<p class="error">Ralat mengambil data: ' + error.message + '</p>';
+        container.innerHTML = '<p class="error-msg">Ralat mengambil data: ' + esc(error.message) + '</p>';
+        return;
+    }
+    if (!pending.length) {
+        container.innerHTML = '<p class="empty-note">🎉 Tiada aduan dalam senarai menunggu (semua selesai).</p>';
         return;
     }
 
+    const urls = await signedUrlMap(pending.flatMap((r) => [r.photo_path, r.pdf_path]));
     container.innerHTML = '';
 
-    if (!pending || pending.length === 0) {
-        container.innerHTML = '<p class="text-center" style="padding: 2rem; color: #6b7280;">🎉 Tiada aduan dalam senarai menunggu (Semua selesai).</p>';
-        return;
-    }
-
     pending.forEach((r, idx) => {
-        const daysElapsed = Math.floor((new Date() - new Date(r.submitted_at)) / (1000 * 60 * 60 * 24));
-        const photoEmbed = getGDriveDirectImgUrl(r.gdrive_photo_link);
-        const pdfEmbed   = getGDrivePdfViewUrl(r.gdrive_pdf_link);
+        const days = Math.floor((Date.now() - new Date(r.submitted_at)) / 86400000);
+        // Supabase signed URL while the file is still there, Google Drive link afterwards
+        const photoUrl = urls[r.photo_path] || r.drive_photo_link;
+        const pdfUrl = urls[r.pdf_path] || r.drive_pdf_link;
 
         const card = document.createElement('div');
         card.className = 'fifo-card';
         card.innerHTML = `
             <div class="fifo-header">
                 <div>
-                    <span class="badge ${r.priority === 'Kecemasan' ? 'badge-danger' : ''}">${r.priority}</span>
-                    <strong>#${idx + 1} - ${r.ref_no}</strong> (${r.school_name})
+                    <span class="badge ${r.priority === 'Kecemasan' ? 'badge-danger' : ''}">${esc(r.priority)}</span>
+                    <strong>#${idx + 1} - ${esc(r.ref_no)}</strong> (${esc(r.school_name)})
                 </div>
-                <div class="day-counter">⏳ ${daysElapsed === 0 ? 'Hari Ini' : daysElapsed + ' Hari Berlalu'}</div>
+                <div class="day-counter">⏳ ${days === 0 ? 'Hari Ini' : days + ' Hari Berlalu'}</div>
             </div>
-            <h4 style="margin: 0.5rem 0 0.25rem 0; font-size: 1.1rem;">${r.title}</h4>
-            <p style="color: #4b5563; font-size: 0.95rem;">${r.description}</p>
-            
+            <h4>${esc(r.title)}</h4>
+            <p class="desc">${esc(r.description)}</p>
             <div class="evidence-grid">
-                ${r.gdrive_photo_link ? `
-                    <div>
-                        <a href="${r.gdrive_photo_link}" target="_blank">
-                            <img src="${photoEmbed}" class="evidence-thumb" alt="Foto Bukti Google Drive" onerror="this.src='https://via.placeholder.com/140x100?text=Klik+Buka+GDrive'">
-                        </a>
-                    </div>
-                ` : ''}
+                ${urls[r.photo_path] ? `<a href="${esc(photoUrl)}" target="_blank" rel="noopener">
+                    <img src="${esc(photoUrl)}" class="evidence-thumb" alt="Foto bukti"></a>`
+                  : (photoUrl ? `<a href="${esc(photoUrl)}" target="_blank" rel="noopener" class="btn-pdf-link">🖼️ Buka Gambar (Google Drive)</a>` : '')}
                 <div>
-                    ${r.gdrive_pdf_link ? `
-                        <a href="${pdfEmbed}" target="_blank" class="btn-pdf-link">📄 Buka Surat Rasmi (Google Drive PDF)</a><br>
-                    ` : ''}
-                    <small style="color: #6b7280;">Masa Hantar: ${new Date(r.submitted_at).toLocaleString('ms-MY')}</small>
+                    ${pdfUrl ? `<a href="${esc(pdfUrl)}" target="_blank" rel="noopener" class="btn-pdf-link">📄 Buka Surat Rasmi (PDF)</a><br>` : ''}
+                    <small class="muted">Kategori: ${esc(r.category)} | Dihantar: ${new Date(r.submitted_at).toLocaleString('ms-MY')}</small>
                 </div>
             </div>
-            
-            <button class="btn-primary" style="background-color: #059669;" onclick="markCompleted(${r.id})">✓ Tanda Selesai & Beranjak ke Giliran Seterusnya</button>
+            <button class="btn-primary btn-done">✓ Tanda Selesai</button>
         `;
+        card.querySelector('.btn-done').addEventListener('click', () => markCompleted(r.id));
         container.appendChild(card);
     });
 }
 
-// ==========================================
-// 5. Mark Report Completed
-// ==========================================
-
 async function markCompleted(id) {
     if (!confirm('Adakah anda pasti ingin menandakan aduan ini sebagai SELESAI?')) return;
 
-    const { error } = await _supabase
-        .from('reports')
-        .update({ status: 'Selesai', completed_at: new Date().toISOString() })
-        .eq('id', id);
+    // completed_at is set by a database trigger
+    const { data, error } = await sb.from('reports').update({ status: 'Selesai' }).eq('id', id).select();
 
-    if (error) {
-        alert('Ralat mengemaskini status: ' + error.message);
-    } else {
-        alert('Aduan telah ditandakan SELESAI.');
-        fetchFifoQueue();
-    }
+    if (error) return alert('Ralat mengemaskini status: ' + error.message);
+    if (!data || !data.length) return alert('Tiada kebenaran untuk mengemaskini aduan ini.');
+
+    alert('Aduan telah ditandakan SELESAI.');
+    fetchFifoQueue();
 }
 
 // ==========================================
-// 6. Fetch School Specific History
+// 6. Headmaster: own report history (RLS limits rows to own school)
 // ==========================================
 
 async function fetchSchoolHistory() {
-    const container = document.getElementById('school-history-list');
+    const container = $('school-history-list');
     container.innerHTML = '<small>Memuatkan rekod aduan...</small>';
 
-    const schoolName = currentUser ? currentUser.name : 'SK Pontian Utama (JBA6001)';
-
-    const { data: schoolReports, error } = await _supabase
+    const { data, error } = await sb
         .from('reports')
-        .select('*')
-        .eq('school_name', schoolName)
-        .order('submitted_at', { ascending: false });
+        .select('ref_no,title,category,status,submitted_at')
+        .order('submitted_at', { ascending: false })
+        .limit(100);
 
-    if (error || !schoolReports || schoolReports.length === 0) {
-        container.innerHTML = '<small style="color: #6b7280;">Tiada rekod aduan lalu dijumpai untuk sekolah ini.</small>';
+    if (error || !data || !data.length) {
+        container.innerHTML = '<small class="muted">Tiada rekod aduan lalu dijumpai untuk sekolah ini.</small>';
         return;
     }
 
-    container.innerHTML = '';
-    schoolReports.forEach(r => {
-        const div = document.createElement('div');
-        div.style.padding = '10px';
-        div.style.borderBottom = '1px solid #E5E7EB';
-        const isDone = r.status === 'Selesai';
-        div.innerHTML = `
-            <div style="display: flex; justify-content: space-between; align-items: center;">
+    container.innerHTML = data.map((r) => {
+        const done = r.status === 'Selesai';
+        return `
+            <div class="history-row">
                 <div>
-                    <b>${r.ref_no}</b> - ${r.title}
-                    <div style="font-size: 0.8rem; color: #6b7280;">Tarikh: ${new Date(r.submitted_at).toLocaleDateString('ms-MY')} | Kategori: ${r.category}</div>
+                    <b>${esc(r.ref_no)}</b> - ${esc(r.title)}
+                    <div class="muted small">Tarikh: ${new Date(r.submitted_at).toLocaleDateString('ms-MY')} | Kategori: ${esc(r.category)}</div>
                 </div>
-                <span class="badge" style="background-color: ${isDone ? '#d1fae5' : '#fef3c7'}; color: ${isDone ? '#065f46' : '#92400e'}; font-weight: bold;">
-                    ${r.status}
-                </span>
-            </div>
-        `;
-        container.appendChild(div);
-    });
+                <span class="badge ${done ? 'badge-ok' : 'badge-wait'}">${esc(r.status)}</span>
+            </div>`;
+    }).join('');
 }

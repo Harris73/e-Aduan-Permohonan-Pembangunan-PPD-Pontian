@@ -1,0 +1,11 @@
+[build]
+  publish   = "."
+  functions = "netlify/functions"
+
+# Daily cleanup of evidence files older than 6 months (runs on production deploys only)
+[functions."cleanup-old-files"]
+  schedule = "@daily"
+
+# Copy new uploads from Supabase Storage to Google Drive every 10 minutes
+[functions."archive-to-drive"]
+  schedule = "*/10 * * * *"

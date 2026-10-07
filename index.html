@@ -5,14 +5,11 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>e-Aduan Penyelenggaraan PPD Pontian</title>
     <link rel="stylesheet" href="style.css">
-    
-    <!-- Supabase JS Client -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 
 <body>
 
-    <!-- Header Navigation -->
     <header class="navbar">
         <div class="logo-title">
             <span class="flag-icon">🇲🇾</span>
@@ -22,56 +19,45 @@
             </div>
         </div>
         <div id="user-session" class="user-session hidden">
-            <span id="nav-user-name"><b>Log Masuk:</b> -</span>
+            <span id="nav-user-name"></span>
             <span id="nav-user-role" class="badge"></span>
             <button class="btn-logout" onclick="logout()">Log Keluar</button>
         </div>
     </header>
 
-    <!-- LOGIN MODAL -->
+    <!-- LOGIN -->
     <div id="login-modal" class="modal-overlay">
         <div class="modal-card">
             <h2>Log Masuk Sistem</h2>
             <p>Sila masukkan maklumat akaun rasmi anda</p>
-            
+
             <form id="login-form" onsubmit="handleLogin(event)">
                 <div class="form-group">
-                    <label for="username">ID Pengguna / Kod Sekolah / NIP</label>
-                    <input type="text" id="username" placeholder="Contoh: JBA6001 atau PPD102" required>
+                    <label for="username">ID Pengguna / Kod Sekolah</label>
+                    <input type="text" id="username" placeholder="Contoh: JBA6001 atau PPD102"
+                           autocomplete="username" required>
                 </div>
                 <div class="form-group">
                     <label for="password">Kata Laluan</label>
-                    <input type="password" id="password" placeholder="••••••••" required>
-                </div>
-                <div class="form-group">
-                    <label for="role">Peranan</label>
-                    <select id="role" required>
-                        <option value="headmaster">Guru Besar (Sekolah)</option>
-                        <option value="ppd_officer">Pegawai PPD Pontian</option>
-                    </select>
+                    <input type="password" id="password" placeholder="••••••••"
+                           autocomplete="current-password" required>
                 </div>
                 <div id="login-error" class="error-msg hidden">ID atau kata laluan tidak sah.</div>
-                <button type="submit" class="btn-primary">Log Masuk</button>
+                <button type="submit" id="login-btn" class="btn-primary">Log Masuk</button>
             </form>
-            <div class="demo-box">
-                <p><b>Akaun Ujian (Demo):</b></p>
-                <small>Guru Besar: <code>JBA6001</code> / <code>123456</code></small><br>
-                <small>Pegawai PPD: <code>PPD102</code> / <code>123456</code></small>
-            </div>
         </div>
     </div>
 
-    <!-- MAIN CONTAINER -->
     <main class="container">
 
-        <!-- GURU BESAR VIEW -->
+        <!-- GURU BESAR -->
         <section id="headmaster-view" class="view-section hidden">
             <div class="section-header">
                 <h2>Permohonan Aduan Penyelenggaraan Baru</h2>
-                <p>Borang penyerahan bukti kerosakan fizikal sekolah ke PPD Pontian via Google Drive</p>
+                <p>Hantar bukti kerosakan fizikal sekolah ke PPD Pontian</p>
             </div>
 
-            <form id="report-form" class="card-form" onsubmit="submitReport(event)" enctype="multipart/form-data">
+            <form id="report-form" class="card-form" onsubmit="submitReport(event)">
                 <div class="form-grid">
                     <div class="form-group">
                         <label for="category">Kategori Kerosakan *</label>
@@ -98,65 +84,49 @@
 
                 <div class="form-group">
                     <label for="title">Tajuk Ringkas Aduan *</label>
-                    <input type="text" id="title" placeholder="Contoh: Kerosakan Bumbung Bocor Blok A" required>
+                    <input type="text" id="title" maxlength="150"
+                           placeholder="Contoh: Kerosakan Bumbung Bocor Blok A" required>
                 </div>
 
                 <div class="form-group">
                     <label for="description">Keterangan Terperinci Kerosakan *</label>
-                    <textarea id="description" rows="4" placeholder="Jelaskan lokasi kerosakan, tahap risiko, dan sejarah kerosakan..." required></textarea>
+                    <textarea id="description" rows="4" maxlength="3000"
+                              placeholder="Jelaskan lokasi kerosakan, tahap risiko, dan sejarah kerosakan..." required></textarea>
                 </div>
 
-                <!-- Image Upload Section -->
-                    <div class="form-group">
-                        <label for="photo_file">Muat Naik Gambar Kerosakan (Foto):</label>
-                            <input 
-                                type="file" 
-                                id="photo_file" 
-                                name="photo_file" 
-                                accept="image/*" 
-                                onchange="previewLocalImage(event)" 
-                            />
-                            
-                            <!-- Container ID: image-preview-container -->
-                            <div id="image-preview-container" class="hidden margin-top-sm">
-                                <img id="image-preview" src="" alt="Pratonton Gambar" style="max-width: 100%; max-height: 200px; border-radius: 6px;" />
-                            </div>
-                            </div>
-
-                            <!-- PDF Document Upload Section -->
-                            <div class="form-group">
-                            <label for="pdf_file">Muat Naik Surat Rasmi / Dokumen Sokongan (PDF):</label>
-                            <input 
-                                type="file" 
-                                id="pdf_file" 
-                                name="pdf_file" 
-                                accept="application/pdf" 
-                                onchange="previewLocalPdf(event)" 
-                            />
-                            
-                            <!-- Container ID: pdf-preview-info -->
-                            <div id="pdf-preview-info" class="hidden margin-top-sm">
-                            <span id="pdf-file-name" class="badge-info"></span>
-                        </div>
+                <div class="form-group">
+                    <label for="photo_file">Gambar Kerosakan (JPG / PNG / WebP)</label>
+                    <input type="file" id="photo_file" accept="image/jpeg,image/png,image/webp"
+                           onchange="previewLocalImage(event)">
+                    <div id="image-preview-container" class="hidden margin-top-sm">
+                        <img id="image-preview" src="" alt="Pratonton Gambar">
                     </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="pdf_file">Surat Rasmi / Dokumen Sokongan (PDF, maks 5 MB)</label>
+                    <input type="file" id="pdf_file" accept="application/pdf"
+                           onchange="previewLocalPdf(event)">
+                    <div id="pdf-preview-info" class="hidden margin-top-sm">
+                        <span id="pdf-file-name" class="badge-info"></span>
+                    </div>
+                </div>
 
                 <button type="submit" id="submit-btn" class="btn-primary">Hantar Permohonan Aduan</button>
             </form>
 
-            <!-- Past Reports List for School -->
             <div class="history-section">
                 <h3>Senarai Aduan Sekolah Ini</h3>
                 <div id="school-history-list" class="report-list"></div>
             </div>
         </section>
 
-        <!-- PEGAWAI PPD VIEW (FIFO Queue) -->
+        <!-- PEGAWAI PPD -->
         <section id="ppd-view" class="view-section hidden">
             <div class="section-header">
                 <h2>Senarai Menunggu Aduan (Sistem FIFO)</h2>
-                <p>Aduan disusun mengikut urutan tarikh penerimaan terawal (First-In, First-Out)</p>
+                <p>Aduan disusun mengikut tarikh penerimaan terawal (First-In, First-Out)</p>
             </div>
-
             <div id="fifo-queue-list" class="fifo-queue"></div>
         </section>
 
