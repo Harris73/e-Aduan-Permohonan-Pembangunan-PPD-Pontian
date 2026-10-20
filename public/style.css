@@ -473,7 +473,7 @@ img { display: block; max-width: 100%; }
     transition: background-color var(--dur), opacity var(--dur); }
 .btn-close:hover { opacity: 1; background: rgba(15, 23, 42, .06); }
 
-.empty-state, .empty-note {
+.empty-state {
     display: flex; flex-direction: column; align-items: center; text-align: center; gap: 6px;
     padding: 44px 20px; color: var(--text-3); font-size: 14px; animation: fadeUp var(--dur-slow) var(--ease);
 }
@@ -482,7 +482,7 @@ img { display: block; max-width: 100%; }
 .empty-state .empty-icon .icon { width: 22px; height: 22px; }
 .empty-state.is-success .empty-icon { color: var(--success); background: var(--success-50); border-color: var(--success-200); }
 .empty-state strong { color: var(--text); font-size: 15px; }
-.fifo-queue > .empty-state, .fifo-queue > .empty-note { background: var(--surface); border: 1px dashed var(--border-strong);
+.fifo-queue > .empty-state { background: var(--surface); border: 1px dashed var(--border-strong);
     border-radius: var(--radius-lg); }
 
 /* ---------- 13. Skeleton loaders ---------- */
@@ -506,6 +506,9 @@ img { display: block; max-width: 100%; }
 .report-list { padding: 4px 8px 8px; }
 .report-list > small { display: block; padding: 16px 12px; }
 .report-list > .error-msg { margin: 8px; }
+/* headmaster side card: the list sits in its own inset panel */
+.history-section > .report-list { background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius-lg); box-shadow: var(--shadow); }
 .history-row {
     display: flex; align-items: center; justify-content: space-between; gap: 12px;
     padding: 12px; border-radius: 10px; transition: background-color var(--dur) var(--ease);
@@ -601,13 +604,13 @@ img { display: block; max-width: 100%; }
     box-shadow: var(--shadow-xs); }
 .evidence-thumb { width: 96px; height: 72px; object-fit: cover; transition: transform var(--dur-slow) var(--ease); }
 .evidence-thumb-link:hover .evidence-thumb { transform: scale(1.06); }
-.file-chip, .btn-pdf-link {
+.file-chip {
     display: inline-flex; align-items: center; gap: 7px; height: 34px; padding: 0 12px; border-radius: 9px;
     font-size: 13px; font-weight: 600; color: var(--text); background: var(--surface);
     border: 1px solid var(--border-strong); box-shadow: var(--shadow-xs);
     transition: transform var(--dur) var(--ease), box-shadow var(--dur) var(--ease), border-color var(--dur);
 }
-.file-chip:hover, .btn-pdf-link:hover { text-decoration: none; transform: translateY(-1px); box-shadow: var(--shadow-sm);
+.file-chip:hover { text-decoration: none; transform: translateY(-1px); box-shadow: var(--shadow-sm);
     border-color: #b8c2d0; }
 .file-chip .icon-pdf { color: var(--danger); }
 .file-chip .icon-img { color: var(--primary); }
@@ -700,34 +703,7 @@ time[title] { cursor: help; text-decoration: underline dotted rgba(100, 116, 139
     .toast-progress { animation-duration: 4s !important; }
 }
 
-/* ---------- 19. Legacy aliases (current index.html / app.js markup) – remove after migration ---------- */
-.btn-primary:not(.btn) { position: relative; display: inline-flex; align-items: center; justify-content: center;
-    width: 100%; height: 44px; margin-top: 8px; border-radius: 10px; border: 1px solid var(--primary-600);
-    font-weight: 600; cursor: pointer; transition: transform var(--dur) var(--ease), box-shadow var(--dur) var(--ease); }
-.btn-primary:not(.btn):disabled { opacity: .6; cursor: not-allowed; }
-.btn-done:not(.btn) { width: auto; padding: 0 16px; background: linear-gradient(180deg, #10b981, var(--success));
-    border-color: var(--success-700); }
-.btn-logout { height: 36px; padding: 0 12px; border-radius: 9px; border: 1px solid var(--border-strong);
-    background: var(--surface); font-weight: 600; font-size: 13px; cursor: pointer; }
-.badge-ok     { color: var(--success-700); background: var(--success-50); border-color: var(--success-200); }
-.badge-wait   { color: var(--warning-700); background: var(--warning-50); border-color: var(--warning-200); }
-.badge-danger { color: var(--danger-700);  background: var(--danger-50);  border-color: var(--danger-200); }
-.badge-info   { display: inline-flex; padding: 4px 10px; border-radius: 8px; font-size: 13px;
-    color: var(--primary-700); background: var(--primary-50); }
-.margin-top-sm { margin-top: 8px; }
-#image-preview:not(.file-preview img) { max-height: 200px; border-radius: 10px; border: 1px solid var(--border); }
-.modal-overlay { position: fixed; inset: 0; z-index: 100; display: flex; align-items: center; justify-content: center;
-    padding: 16px; background: rgba(15, 23, 42, .55); -webkit-backdrop-filter: blur(4px); backdrop-filter: blur(4px); }
-.modal-card { width: 100%; max-width: 400px; padding: 28px; background: var(--surface); border-radius: var(--radius-xl);
-    box-shadow: var(--shadow-lg); animation: popIn var(--dur-slow) var(--ease); }
-.modal-card > p { color: var(--text-3); margin: 4px 0 20px; font-size: 14px; }
-.history-section > h3 { font-size: 16px; margin-bottom: 10px; }
-.history-section > .report-list { background: var(--surface); border: 1px solid var(--border);
-    border-radius: var(--radius-lg); box-shadow: var(--shadow); }
-.form-group input[type="file"]:not(.dropzone input) { width: 100%; padding: 8px; border: 1px dashed var(--border-strong);
-    border-radius: 10px; background: var(--surface-2); }
-body > .toast { position: fixed; left: 50%; bottom: 20px; transform: translateX(-50%); z-index: 1100;
-    width: min(420px, calc(100vw - 32px)); }
+/* ---------- 19. (removed: legacy aliases for the pre-migration markup) ---------- */
 
 /* ---------- 20. Features from main (feedback, emergency level, tabs, history filters) ---------- */
 /* Restyled with the design tokens above; class names match public/app.js + public/index.html */
@@ -750,24 +726,7 @@ body > .toast { position: fixed; left: 50%; bottom: 20px; transform: translateX(
 .tab:hover { color: var(--text); }
 .tab.active { background: var(--surface); color: var(--primary-700); box-shadow: var(--shadow-sm); }
 
-.fb-details { margin-top: 14px; border: 1px dashed var(--primary-200); border-radius: var(--radius);
-    background: #f8fbff; transition: border-color var(--dur), background-color var(--dur); }
-.fb-details[open] { border-style: solid; background: var(--surface); box-shadow: var(--shadow-sm); }
-.fb-details summary { padding: 12px 14px; cursor: pointer; font-size: 14px; font-weight: 600;
-    color: var(--primary-700); list-style: none; border-radius: var(--radius); }
-.fb-details summary::-webkit-details-marker { display: none; }
-.fb-details summary:hover { background: var(--primary-50); }
-.fb-form { padding: 4px 14px 14px; animation: fadeUp var(--dur) var(--ease); }
-.fb-form .btn-primary:not(.btn) { width: auto; padding: 0 18px; }
-
-.fb-block { margin-top: 14px; padding: 14px 16px; border-radius: var(--radius); border: 1px solid var(--success-200);
-    background: linear-gradient(135deg, var(--success-50), #f0fdf9); color: #065f46; }
-.fb-block h5 { font-size: 14px; font-weight: 700; color: #065f46; }
-.fb-block p { margin-top: 6px; font-size: 14px; color: var(--text); }
-.fb-block p.muted { color: var(--text-3); }
-
 .btn-done:disabled { filter: grayscale(.6); opacity: .5; cursor: not-allowed; box-shadow: none; }
-.btn-done + small.muted { display: block; margin-top: 6px; font-size: 12px; }
 
 .filter-bar { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; }
 .filter-bar input, .filter-bar select { height: 40px; padding: 0 12px; border-radius: 10px; font-size: 14px;
@@ -902,11 +861,26 @@ summary.history-row::-webkit-details-marker { display: none; }
 .filter-bar select { appearance: none; -webkit-appearance: none; padding-right: 36px; cursor: pointer;
     background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
     background-repeat: no-repeat; background-position: right 10px center; background-size: 16px; }
-/* text takes the row; badges drop below it whenever the row is too narrow (phone, headmaster side card) */
-summary.history-row { flex-wrap: wrap; row-gap: 8px; }
-summary.history-row > div:first-child { flex: 1 1 280px; }
-summary.history-row > .history-badges { flex: 0 1 auto; min-width: 0; justify-content: flex-start; }
-summary.history-row > .chev { width: 16px; height: 16px; margin-left: auto; flex-shrink: 0; }
+/* wide: [text | badges | chevron] on one line.
+   narrow (phone, headmaster side card): text on top, then badges with the chevron on the same line */
+summary.history-row {
+    display: grid; grid-template-columns: minmax(0, 1fr) auto auto; grid-template-areas: "text badges chev";
+    align-items: center; gap: 8px 12px;
+}
+summary.history-row > div:first-child { grid-area: text; }
+summary.history-row > .history-badges { grid-area: badges; min-width: 0; }
+summary.history-row > .chev { grid-area: chev; width: 16px; height: 16px; }
+.history-section summary.history-row {
+    grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "text text" "badges chev";
+}
+.history-section summary.history-row > .history-badges { justify-content: flex-start; }
+/* if long badges wrap to two lines, keep the chevron level with the first badge line (24px badge, 16px icon) */
+.history-section summary.history-row > .chev { align-self: start; margin-top: 4px; }
+@media (max-width: 640px) {
+    summary.history-row { grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "text text" "badges chev"; }
+    summary.history-row > .history-badges { justify-content: flex-start; }
+    summary.history-row > .chev { align-self: start; margin-top: 4px; }
+}
 .ref { white-space: nowrap; }
 .section-header .tabs { margin-bottom: 0; }
 .history-section .fb-fields { grid-template-columns: 1fr; }
