@@ -323,20 +323,65 @@
 
         <!-- PEGAWAI PPD -->
         <section id="ppd-view" class="view-section hidden">
-            <div class="tabs">
-                <button id="tab-queue" class="tab active" onclick="showPpdTab('queue')">Senarai Menunggu (FIFO)</button>
-                <button id="tab-history" class="tab" onclick="showPpdTab('history')">Sejarah Aduan</button>
+            <div class="section-header">
+                <div>
+                    <div class="eyebrow"><svg class="icon icon-sm"><use href="#i-shield"/></svg>Pegawai PPD</div>
+                    <h2>Pengurusan Aduan</h2>
+                    <p>Siasat, hantar maklum balas, kemudian tutup aduan mengikut giliran</p>
+                </div>
+                <div class="tabs has-indicator" role="tablist" aria-label="Paparan Pegawai PPD">
+                    <span class="tab-indicator" aria-hidden="true"></span>
+                    <button id="tab-queue" class="tab active" role="tab" aria-selected="true" aria-controls="ppd-queue-panel"
+                            onclick="showPpdTab('queue')">
+                        <svg class="icon"><use href="#i-inbox"/></svg><span><span class="hide-sm">Senarai </span>Menunggu</span>
+                        <span class="count-pill" id="tab-queue-count">0</span>
+                    </button>
+                    <button id="tab-history" class="tab" role="tab" aria-selected="false" aria-controls="ppd-history-panel"
+                            onclick="showPpdTab('history')">
+                        <svg class="icon"><use href="#i-history"/></svg><span>Sejarah<span class="hide-sm"> Aduan</span></span>
+                    </button>
+                </div>
             </div>
 
-            <div id="ppd-queue-panel">
-                <div class="section-header">
-                    <h2>Senarai Menunggu Aduan (Sistem FIFO)</h2>
-                    <p>Aduan disusun mengikut tarikh penerimaan terawal. Hantar maklum balas siasatan sebelum menandakan selesai.</p>
+            <div id="ppd-queue-panel" class="tab-panel" role="tabpanel" aria-labelledby="tab-queue">
+                <div class="stats">
+                    <div class="stat" style="--i:0">
+                        <div class="stat-label"><svg class="icon"><use href="#i-inbox"/></svg>Menunggu</div>
+                        <div class="stat-value" id="stat-total">0</div>
+                    </div>
+                    <div class="stat is-danger" style="--i:1">
+                        <div class="stat-label"><svg class="icon"><use href="#i-alert-triangle"/></svg>Kecemasan</div>
+                        <div class="stat-value" id="stat-emergency">0</div>
+                    </div>
+                    <div class="stat is-orange" style="--i:2">
+                        <div class="stat-label"><svg class="icon"><use href="#i-chevrons-up"/></svg>Tinggi</div>
+                        <div class="stat-value" id="stat-high">0</div>
+                    </div>
+                    <div class="stat is-warning" style="--i:3">
+                        <div class="stat-label"><svg class="icon"><use href="#i-clock"/></svg>Paling lama</div>
+                        <div class="stat-value"><span id="stat-oldest">0</span><small>hari</small></div>
+                    </div>
                 </div>
+
+                <div class="queue-toolbar">
+                    <h3>Giliran FIFO <span class="muted small">terawal di atas</span></h3>
+                    <div class="page-actions">
+                        <span id="last-updated" class="live-status">
+                            <span class="live-dot" aria-hidden="true"></span>
+                            <span id="last-updated-text">Memuatkan...</span>
+                        </span>
+                        <button id="refresh-btn" class="btn btn-secondary btn-sm" onclick="fetchFifoQueue()">
+                            <svg class="icon"><use href="#i-refresh"/></svg>
+                            <span class="btn-label">Muat Semula</span>
+                        </button>
+                    </div>
+                </div>
+
                 <div id="fifo-queue-list" class="fifo-queue"></div>
             </div>
 
-            <div id="ppd-history-panel" class="hidden">
+            <!-- History panel content is restyled in stage (d) -->
+            <div id="ppd-history-panel" class="tab-panel hidden" role="tabpanel" aria-labelledby="tab-history">
                 <div class="section-header">
                     <h2>Sejarah Aduan Semua Sekolah</h2>
                     <p>Rekod aduan beserta maklum balas siasatan PPD</p>
