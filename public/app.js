@@ -27,13 +27,63 @@ function withTimeout(promise, ms) {
         setTimeout(() => reject(new Error('Sambungan ke pelayan tamat masa.')), ms))]);
 }
 
-let toastTimer = null;
+// ---------- UI helpers (display only) ----------
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+const reducedMotion = () => window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+const icon = (name, cls = '') => `<svg class="icon ${cls}" aria-hidden="true"><use href="#i-${name}"/></svg>`;
+
+// Toast slides in, shows a ~4 s progress bar (pauses on hover) and can be closed
 function showToast(message, type = 'info') {
-    const el = $('toast');
-    el.textContent = message;
-    el.className = 'toast toast-' + type;
-    clearTimeout(toastTimer);
-    toastTimer = setTimeout(() => el.classList.add('hidden'), type === 'error' ? 8000 : 5000);
+    const region = $('toast');
+    const glyph = { info: 'mark-info', ok: 'check', error: 'mark-alert' }[type] || 'mark-info';
+    const el = document.createElement('div');
+    el.className = `toast toast-${type}`;
+    el.innerHTML = `<span class="toast-icon">${icon(glyph)}</span><div class="toast-msg"></div>
+        <button type="button" class="btn-close" aria-label="Tutup">${icon('x')}</button>
+        <span class="toast-progress"></span>`;
+    el.querySelector('.toast-msg').textContent = message;
+
+    const close = () => {
+        if (el.classList.contains('is-leaving')) return;
+        el.classList.add('is-leaving');
+        setTimeout(() => el.remove(), reducedMotion() ? 0 : 200);
+    };
+    el.querySelector('.btn-close').addEventListener('click', close);
+    el.querySelector('.toast-progress').addEventListener('animationend', close);
+    region.appendChild(el);
+    while (region.children.length > 3) region.firstElementChild.remove();
+}
+
+// Ripple on every .btn
+document.addEventListener('pointerdown', (e) => {
+    const btn = e.target.closest('.btn');
+    if (!btn || btn.disabled || reducedMotion()) return;
+    const r = btn.getBoundingClientRect();
+    const size = Math.max(r.width, r.height) * 2;
+    const dot = document.createElement('span');
+    dot.className = 'ripple';
+    dot.style.cssText = `width:${size}px;height:${size}px;left:${e.clientX - r.left - size / 2}px;top:${e.clientY - r.top - size / 2}px`;
+    btn.appendChild(dot);
+    dot.addEventListener('animationend', () => dot.remove());
+});
+
+// state: 'idle' | 'loading' (spinner) | 'success' (animated check). Button needs .btn-label/.btn-spinner/.btn-check.
+function setButtonState(btn, state, loadingText) {
+    const label = btn.querySelector('.btn-label');
+    if (label && btn.dataset.label === undefined) btn.dataset.label = label.textContent;
+    btn.classList.remove('is-loading', 'is-success');
+    btn.disabled = state !== 'idle';
+    btn.setAttribute('aria-busy', String(state === 'loading'));
+    if (label) label.textContent = state === 'loading' && loadingText ? loadingText : btn.dataset.label;
+    if (state !== 'idle') btn.classList.add('is-' + state);
+}
+
+function showLoginError(message) {
+    const err = $('login-error');
+    err.textContent = message;
+    err.classList.remove('hidden', 'shake');
+    void err.offsetWidth; // restart the shake animation
+    err.classList.add('shake');
 }
 const fmtDate = (d) => new Date(d).toLocaleString('ms-MY');
 const one = (x) => (Array.isArray(x) ? x[0] : x) || null; // embedded 1-to-1 relation
@@ -85,7 +135,7 @@ async function handleLogin(e) {
     const password = $('password').value;
     const btn = $('login-btn');
 
-    btn.disabled = true;
+    setButtonState(btn, 'loading');
     $('login-error').classList.add('hidden');
 
     const { data, error } = await sb.auth.signInWithPassword({
@@ -93,14 +143,17 @@ async function handleLogin(e) {
         password,
     });
 
-    btn.disabled = false;
     if (error) {
-        $('login-error').textContent = 'ID atau kata laluan tidak sah.';
-        $('login-error').classList.remove('hidden');
+        setButtonState(btn, 'idle');
+        showLoginError('ID atau kata laluan tidak sah.');
+        $('password').select();
         return;
     }
+    setButtonState(btn, 'success');
+    await sleep(reducedMotion() ? 0 : 450); // let the check mark draw before the screen changes
     $('password').value = '';
     await applySession(data.session, role);
+    setButtonState(btn, 'idle');
 }
 
 function showLogin() {
@@ -111,6 +164,7 @@ function showLogin() {
     $('user-session').classList.add('hidden');
     $('headmaster-view').classList.add('hidden');
     $('ppd-view').classList.add('hidden');
+    setTimeout(() => $('username').focus({ preventScroll: true }), 60);
 }
 
 async function applySession(session, expectedRole = null) {
@@ -137,8 +191,7 @@ async function applySession(session, expectedRole = null) {
         return showLogin(); // the SIGNED_OUT listener is not registered yet on first load
     }
     if (expectedRole && data.role !== expectedRole) {
-        $('login-error').textContent = 'Peranan yang dipilih tidak sepadan dengan akaun ini.';
-        $('login-error').classList.remove('hidden');
+        showLoginError('Peranan yang dipilih tidak sepadan dengan akaun ini.');
         await sb.auth.signOut();
         return showLogin();
     }
@@ -147,8 +200,10 @@ async function applySession(session, expectedRole = null) {
     $('app-loading').classList.add('hidden');
     $('login-modal').classList.add('hidden');
     $('user-session').classList.remove('hidden');
-    $('nav-user-name').textContent = 'Log Masuk: ' + profile.full_name;
+    $('nav-user-name').textContent = profile.full_name;
     $('nav-user-role').textContent = ROLE_LABEL[profile.role] || profile.role;
+    $('nav-user-avatar').textContent = String(profile.full_name || '')
+        .split(/\s+/).filter(Boolean).slice(0, 2).map((w) => w[0]).join('').toUpperCase();
 
     if (profile.role === 'headmaster') {
         $('headmaster-view').classList.remove('hidden');
