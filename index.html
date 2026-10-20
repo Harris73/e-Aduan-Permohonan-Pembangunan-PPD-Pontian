@@ -12,7 +12,11 @@
 
     <header class="navbar">
         <div class="logo-title">
-            <span class="flag-icon">🇲🇾</span>
+            <svg class="logo-mark" viewBox="0 0 40 40" width="40" height="40" aria-hidden="true">
+                <rect width="40" height="40" rx="9" fill="#fff"/>
+                <text x="20" y="26.5" text-anchor="middle" font-size="17" font-weight="700"
+                      font-family="Segoe UI, Roboto, Arial, sans-serif" fill="#1e3a8a">eA</text>
+            </svg>
             <div>
                 <h1>e-Aduan Penyelenggaraan</h1>
                 <small>Pejabat Pendidikan Daerah Pontian</small>
@@ -26,7 +30,7 @@
     </header>
 
     <!-- LOGIN -->
-    <div id="login-modal" class="modal-overlay">
+    <div id="login-modal" class="modal-overlay hidden">
         <div class="modal-card">
             <h2>Log Masuk Sistem</h2>
             <p>Sila masukkan maklumat akaun rasmi anda</p>
@@ -50,12 +54,19 @@
 
     <main class="container">
 
+        <div id="app-loading" class="app-loading" role="status">Memuatkan sistem...</div>
+        <div id="app-fatal" class="error-msg hidden" role="alert">
+            Gagal memuatkan sistem. Sila semak sambungan internet dan muat semula halaman.
+        </div>
+
         <!-- GURU BESAR -->
         <section id="headmaster-view" class="view-section hidden">
             <div class="section-header">
                 <h2>Permohonan Aduan Penyelenggaraan Baru</h2>
                 <p>Hantar bukti kerosakan fizikal sekolah ke PPD Pontian</p>
             </div>
+
+            <div id="submit-success" class="success-panel hidden" role="status"></div>
 
             <form id="report-form" class="card-form" onsubmit="submitReport(event)">
                 <div class="form-grid">
@@ -131,6 +142,8 @@
         </section>
 
     </main>
+
+    <div id="toast" class="toast hidden" role="status" aria-live="polite"></div>
 
     <script src="app.js"></script>
 </body>

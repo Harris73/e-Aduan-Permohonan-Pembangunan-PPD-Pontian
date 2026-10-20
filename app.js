@@ -10,8 +10,10 @@ const SUPABASE_ANON_KEY = 'PASTE_YOUR_ANON_KEY_HERE';
 const EMAIL_DOMAIN = 'aduan.ppdpontian.my'; // username -> username@EMAIL_DOMAIN (see schema.sql step 6)
 const BUCKET = 'evidence';
 const MAX_PDF_BYTES = 5 * 1024 * 1024;
+const STARTUP_TIMEOUT_MS = 8000; // never leave the user stuck on the loading screen
 
-const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+// null when the supabase-js CDN script failed to load
+const sb = window.supabase ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
 let profile = null;
 
 // ---------- helpers ----------
@@ -19,9 +21,36 @@ const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g,
     (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
+function withTimeout(promise, ms) {
+    return Promise.race([promise, new Promise((_, reject) =>
+        setTimeout(() => reject(new Error('Sambungan ke pelayan tamat masa.')), ms))]);
+}
+
+let toastTimer = null;
+function showToast(message, type = 'info') {
+    const el = $('toast');
+    el.textContent = message;
+    el.className = 'toast toast-' + type;
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => el.classList.add('hidden'), type === 'error' ? 8000 : 5000);
+}
+
 document.addEventListener('DOMContentLoaded', async () => {
-    const { data } = await sb.auth.getSession();
-    await applySession(data.session);
+    if (!sb) {
+        $('app-loading').classList.add('hidden');
+        $('app-fatal').classList.remove('hidden');
+        return;
+    }
+
+    let session = null;
+    try {
+        const { data } = await withTimeout(sb.auth.getSession(), STARTUP_TIMEOUT_MS);
+        session = data.session;
+    } catch (err) {
+        console.error('getSession:', err);
+    }
+    await applySession(session);
+
     sb.auth.onAuthStateChange((event) => {
         if (event === 'SIGNED_OUT') showLogin();
     });
@@ -56,6 +85,8 @@ async function handleLogin(e) {
 
 function showLogin() {
     profile = null;
+    $('app-loading').classList.add('hidden');
+    $('submit-success').classList.add('hidden');
     $('login-modal').classList.remove('hidden');
     $('user-session').classList.add('hidden');
     $('headmaster-view').classList.add('hidden');
@@ -65,14 +96,29 @@ function showLogin() {
 async function applySession(session) {
     if (!session) return showLogin();
 
-    const { data, error } = await sb.from('profiles').select('*').eq('id', session.user.id).single();
-    if (error || !data) {
-        alert('Akaun anda belum didaftarkan dalam sistem. Sila hubungi pentadbir PPD.');
+    let data, error;
+    try {
+        ({ data, error } = await withTimeout(
+            sb.from('profiles').select('*').eq('id', session.user.id).single(), STARTUP_TIMEOUT_MS));
+    } catch (err) {
+        console.error('applySession:', err);
+        showToast('Gagal menyambung ke pelayan. Sila cuba log masuk semula.', 'error');
+        return showLogin();
+    }
+    // PGRST116 = no profile row; anything else is a connection/server problem
+    if (error && error.code !== 'PGRST116') {
+        console.error('applySession:', error);
+        showToast('Gagal mengambil maklumat akaun: ' + error.message, 'error');
+        return showLogin();
+    }
+    if (!data) {
+        showToast('Akaun anda belum didaftarkan dalam sistem. Sila hubungi pentadbir PPD.', 'error');
         await sb.auth.signOut();
-        return;
+        return showLogin(); // the SIGNED_OUT listener is not registered yet on first load
     }
     profile = data;
 
+    $('app-loading').classList.add('hidden');
     $('login-modal').classList.add('hidden');
     $('user-session').classList.remove('hidden');
     $('nav-user-name').textContent = 'Log Masuk: ' + profile.full_name;
@@ -156,6 +202,7 @@ async function submitReport(e) {
 
         btn.disabled = true;
         btn.textContent = 'Memuat naik fail & menghantar aduan...';
+        $('submit-success').classList.add('hidden');
 
         let photo_path = null;
         let pdf_path = null;
@@ -181,7 +228,7 @@ async function submitReport(e) {
 
         if (error) throw error;
 
-        alert('Aduan berjaya dihantar ke PPD Pontian!\n\nNo Rujukan: ' + data.ref_no);
+        showSubmitSuccess(data.ref_no);
         $('report-form').reset();
         $('image-preview-container').classList.add('hidden');
         $('pdf-preview-info').classList.add('hidden');
@@ -189,11 +236,25 @@ async function submitReport(e) {
     } catch (err) {
         console.error('submitReport:', err);
         if (uploaded.length) await sb.storage.from(BUCKET).remove(uploaded); // roll back orphan files
-        alert('Ralat: ' + (err.message || err));
+        showToast('Ralat: ' + (err.message || err), 'error');
     } finally {
         btn.disabled = false;
         btn.textContent = originalText;
     }
+}
+
+// Stays visible (unlike a toast) so the headmaster can note down the reference number
+function showSubmitSuccess(refNo) {
+    const panel = $('submit-success');
+    panel.innerHTML = `
+        <div>
+            <strong>Aduan berjaya dihantar ke PPD Pontian!</strong>
+            <div>No Rujukan: <b class="ref-no">${esc(refNo)}</b></div>
+        </div>
+        <button type="button" class="btn-close" aria-label="Tutup">✕</button>`;
+    panel.querySelector('.btn-close').addEventListener('click', () => panel.classList.add('hidden'));
+    panel.classList.remove('hidden');
+    panel.scrollIntoView({ behavior: 'smooth', block: 'center' });
 }
 
 // ==========================================
@@ -276,10 +337,10 @@ async function markCompleted(id) {
     // completed_at is set by a database trigger
     const { data, error } = await sb.from('reports').update({ status: 'Selesai' }).eq('id', id).select();
 
-    if (error) return alert('Ralat mengemaskini status: ' + error.message);
-    if (!data || !data.length) return alert('Tiada kebenaran untuk mengemaskini aduan ini.');
+    if (error) return showToast('Ralat mengemaskini status: ' + error.message, 'error');
+    if (!data || !data.length) return showToast('Tiada kebenaran untuk mengemaskini aduan ini.', 'error');
 
-    alert('Aduan telah ditandakan SELESAI.');
+    showToast('Aduan telah ditandakan SELESAI.', 'ok');
     fetchFifoQueue();
 }
 
@@ -297,7 +358,11 @@ async function fetchSchoolHistory() {
         .order('submitted_at', { ascending: false })
         .limit(100);
 
-    if (error || !data || !data.length) {
+    if (error) {
+        container.innerHTML = '<p class="error-msg">Ralat mengambil rekod aduan: ' + esc(error.message) + '</p>';
+        return;
+    }
+    if (!data || !data.length) {
         container.innerHTML = '<small class="muted">Tiada rekod aduan lalu dijumpai untuk sekolah ini.</small>';
         return;
     }
