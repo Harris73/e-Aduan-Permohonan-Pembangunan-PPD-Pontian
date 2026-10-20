@@ -8,6 +8,7 @@
     "url": "git+https://github.com/Harris73/e-Aduan-Permohonan-Pembangunan-PPD-Pontian.git"
   },
   "dependencies": {
-    "@supabase/supabase-js": "^2.117.2"
+    "@supabase/supabase-js": "^2.117.2",
+    "netlify-cli": "^27.13.0"
   }
 }

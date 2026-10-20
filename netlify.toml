@@ -1,5 +1,5 @@
 [build]
-  publish   = "."
+  publish   = "public"
   functions = "netlify/functions"
 
 # Daily cleanup of evidence files older than 6 months (runs on production deploys only)

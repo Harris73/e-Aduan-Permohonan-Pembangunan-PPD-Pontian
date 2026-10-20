@@ -53,7 +53,7 @@ async function uploadToDrive(token, name, mime, buffer) {
   return json; // { id, webViewLink }
 }
 
-exports.handler = async () => {
+async function run() {
   const started = Date.now();
   const need = ['SUPABASE_URL', 'SUPABASE_SERVICE_ROLE_KEY', 'GOOGLE_CLIENT_ID', 'GOOGLE_CLIENT_SECRET', 'GOOGLE_REFRESH_TOKEN', 'GDRIVE_FOLDER_ID'];
   const missing = need.filter((k) => !process.env[k]);
@@ -63,7 +63,7 @@ exports.handler = async () => {
 
   const { data: files, error } = await sb
     .from('file_metadata')
-    .select('id, report_id, file_path')
+    .select('id, report_id, file_path, kind')
     .is('archived_at', null)
     .order('created_at', { ascending: true })
     .limit(MAX_FILES_PER_RUN);
@@ -90,17 +90,20 @@ exports.handler = async () => {
       const buffer = Buffer.from(await blob.arrayBuffer());
 
       const ext = f.file_path.split('.').pop().toLowerCase();
-      const isPhoto = report.photo_path === f.file_path;
-      const name = `${report.ref_no}_${isPhoto ? 'gambar' : 'surat'}.${ext}`;
+      const kind = f.kind || (report.photo_path === f.file_path ? 'photo' : 'pdf');
+      const LABEL = { photo: 'gambar', pdf: 'surat', fb_photo: 'maklumbalas-gambar', fb_pdf: 'maklumbalas-borang' };
+      const name = `${report.ref_no}_${LABEL[kind] || 'fail'}.${ext}`;
 
       const drive = await uploadToDrive(token, name, MIME[ext] || 'application/octet-stream', buffer);
 
       await sb.from('file_metadata').update({
         drive_file_id: drive.id, drive_link: drive.webViewLink, archived_at: new Date().toISOString(),
       }).eq('id', f.id);
-      await sb.from('reports').update(
-        isPhoto ? { drive_photo_link: drive.webViewLink } : { drive_pdf_link: drive.webViewLink }
-      ).eq('id', report.id);
+      const link = drive.webViewLink;
+      if (kind === 'photo')         await sb.from('reports').update({ drive_photo_link: link }).eq('id', report.id);
+      else if (kind === 'pdf')      await sb.from('reports').update({ drive_pdf_link: link }).eq('id', report.id);
+      else if (kind === 'fb_photo') await sb.from('report_feedback').update({ drive_photo_link: link }).eq('report_id', report.id);
+      else if (kind === 'fb_pdf')   await sb.from('report_feedback').update({ drive_pdf_link: link }).eq('report_id', report.id);
       ok++;
     } catch (e) {
       failed++;
@@ -108,4 +111,10 @@ exports.handler = async () => {
     }
   }
   return { statusCode: 200, body: `Archived ${ok}, failed ${failed}` };
+}
+
+exports.handler = async () => {
+  const result = await run();
+  console.log(`[archive-to-drive] ${result.statusCode}: ${result.body}`);
+  return result;
 };

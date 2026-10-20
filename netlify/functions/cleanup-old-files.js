@@ -41,6 +41,8 @@ exports.handler = async () => {
 
   await sb.from('reports').update({ photo_path: null }).in('photo_path', paths);
   await sb.from('reports').update({ pdf_path: null }).in('pdf_path', paths);
+  await sb.from('report_feedback').update({ photo_path: null }).in('photo_path', paths);
+  await sb.from('report_feedback').update({ pdf_path: null }).in('pdf_path', paths);
 
   const { error: delErr } = await sb.from('file_metadata').delete().in('id', ids);
   if (delErr) return { statusCode: 500, body: 'Metadata delete error: ' + delErr.message };
