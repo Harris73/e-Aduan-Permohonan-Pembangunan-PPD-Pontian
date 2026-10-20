@@ -85,6 +85,107 @@ function showLoginError(message) {
     void err.offsetWidth; // restart the shake animation
     err.classList.add('shake');
 }
+
+// Animated expand/collapse for a .reveal block; .hidden is added after closing so it leaves the tab order
+function setReveal(el, open) {
+    clearTimeout(el._revealTimer);
+    if (open) {
+        el.classList.remove('hidden');
+        void el.offsetHeight; // commit the collapsed state so the transition runs
+        el.classList.add('is-open');
+    } else {
+        el.classList.remove('is-open');
+        el._revealTimer = setTimeout(() => el.classList.add('hidden'), reducedMotion() ? 0 : 300);
+    }
+}
+
+// ---------- file pickers: drag & drop zone + preview card ----------
+function formatSize(bytes) {
+    return bytes < 1024 * 1024 ? `${Math.max(1, Math.round(bytes / 1024))} KB` : `${(bytes / 1024 / 1024).toFixed(2)} MB`;
+}
+
+// Early warning while picking a file; uploadOptionalFiles still validates again on submit
+function pdfProblem(file) {
+    if (file.type !== 'application/pdf') return 'Dokumen sokongan mesti dalam format PDF.';
+    if (file.size > MAX_PDF_BYTES) return 'Saiz PDF melebihi 5 MB.';
+    return null;
+}
+
+function renderFilePreview(box, file) {
+    const img = box.querySelector('img');
+    if (img) {
+        if (box._url) URL.revokeObjectURL(box._url);
+        box._url = URL.createObjectURL(file);
+        img.src = box._url;
+    }
+    box.querySelector('.file-name').textContent = file.name;
+    box.querySelector('.file-size').textContent = formatSize(file.size) + (img ? ' · akan dimampatkan sebelum dimuat naik' : '');
+    box.classList.remove('hidden', 'is-leaving');
+}
+
+function clearFilePreview(box, input) {
+    input.value = '';
+    if (box.classList.contains('hidden')) return;
+    box.classList.add('is-leaving');
+    setTimeout(() => {
+        box.classList.add('hidden');
+        box.classList.remove('is-leaving');
+        const img = box.querySelector('img');
+        if (img && box._url) { URL.revokeObjectURL(box._url); box._url = null; img.removeAttribute('src'); }
+    }, reducedMotion() ? 0 : 200);
+}
+
+// The real <input type=file> covers the zone; a drop is copied into it and fires its normal change handler
+function setupDropzone(zone) {
+    const input = zone.querySelector('input[type="file"]');
+    const accepted = input.accept.split(',').map((s) => s.trim());
+    let depth = 0;
+    zone.addEventListener('dragenter', (e) => { e.preventDefault(); depth++; zone.classList.add('is-dragover'); });
+    zone.addEventListener('dragover', (e) => { e.preventDefault(); e.dataTransfer.dropEffect = 'copy'; });
+    zone.addEventListener('dragleave', () => { if (--depth <= 0) { depth = 0; zone.classList.remove('is-dragover'); } });
+    zone.addEventListener('drop', (e) => {
+        e.preventDefault();
+        depth = 0;
+        zone.classList.remove('is-dragover');
+        const file = e.dataTransfer.files[0];
+        if (!file) return;
+        if (!accepted.includes(file.type)) return showToast('Jenis fail tidak disokong untuk medan ini.', 'error');
+        const dt = new DataTransfer();
+        dt.items.add(file);
+        input.files = dt.files;
+        input.dispatchEvent(new Event('change', { bubbles: true }));
+    });
+}
+// a file dropped outside a drop zone must not navigate away from the page
+window.addEventListener('dragover', (e) => e.preventDefault());
+window.addEventListener('drop', (e) => e.preventDefault());
+
+// "n / max" counter that turns amber at 80% and red at 95% of maxlength
+function setupCounter(field, out) {
+    const max = field.maxLength;
+    const update = () => {
+        const n = field.value.length;
+        out.textContent = `${n} / ${max}`;
+        out.classList.toggle('is-near', n / max >= .8 && n / max < .95);
+        out.classList.toggle('is-limit', n / max >= .95);
+    };
+    field.addEventListener('input', update);
+    update();
+    return update;
+}
+
+function setupReportFormUi() {
+    document.querySelectorAll('#report-form .dropzone').forEach(setupDropzone);
+    const updateTitle = setupCounter($('title'), $('title-count'));
+    const updateDesc = setupCounter($('description'), $('description-count'));
+    // form.reset() fires before the values change, so refresh on the next tick
+    $('report-form').addEventListener('reset', () => setTimeout(() => {
+        updateTitle();
+        updateDesc();
+        removeFile('photo');
+        removeFile('pdf');
+    }, 0));
+}
 const fmtDate = (d) => new Date(d).toLocaleString('ms-MY');
 const one = (x) => (Array.isArray(x) ? x[0] : x) || null; // embedded 1-to-1 relation
 
@@ -104,6 +205,8 @@ function linkButtons(items) {
 }
 
 document.addEventListener('DOMContentLoaded', async () => {
+    setupReportFormUi();
+
     if (!sb) {
         $('app-loading').classList.add('hidden');
         $('app-fatal').classList.remove('hidden');
@@ -206,8 +309,10 @@ async function applySession(session, expectedRole = null) {
         .split(/\s+/).filter(Boolean).slice(0, 2).map((w) => w[0]).join('').toUpperCase();
 
     if (profile.role === 'headmaster') {
+        $('hm-school-name').textContent = profile.school_name || profile.full_name || '';
         $('headmaster-view').classList.remove('hidden');
         $('ppd-view').classList.add('hidden');
+        setTimeout(() => $('category').focus({ preventScroll: true }), 60);
         loadHistory('school');
     } else {
         $('ppd-view').classList.remove('hidden');
@@ -226,25 +331,32 @@ async function logout() {
 
 function onPriorityChange() {
     const isEmergency = $('priority').value === 'Kecemasan';
-    $('emergency-level-group').classList.toggle('hidden', !isEmergency);
+    setReveal($('emergency-level-group'), isEmergency);
     $('emergency_level').required = isEmergency;
     if (!isEmergency) $('emergency_level').value = '';
 }
 
 function previewLocalImage(event) {
     const file = event.target.files[0];
-    const box = $('image-preview-container');
-    if (!file) return box.classList.add('hidden');
-    $('image-preview').src = URL.createObjectURL(file);
-    box.classList.remove('hidden');
+    if (!file) return clearFilePreview($('image-preview-container'), event.target);
+    renderFilePreview($('image-preview-container'), file);
 }
 
 function previewLocalPdf(event) {
     const file = event.target.files[0];
-    const box = $('pdf-preview-info');
-    if (!file) return box.classList.add('hidden');
-    $('pdf-file-name').textContent = `📄 ${file.name} (${(file.size / 1024 / 1024).toFixed(2)} MB)`;
-    box.classList.remove('hidden');
+    if (!file) return clearFilePreview($('pdf-preview-info'), event.target);
+    const problem = pdfProblem(file);
+    if (problem) {
+        event.target.value = '';
+        return showToast(problem, 'error');
+    }
+    renderFilePreview($('pdf-preview-info'), file);
+}
+
+// "Buang" button on a preview card
+function removeFile(kind) {
+    if (kind === 'photo') clearFilePreview($('image-preview-container'), $('photo_file'));
+    else clearFilePreview($('pdf-preview-info'), $('pdf_file'));
 }
 
 // Shrink phone photos (4-8 MB) to a few hundred KB so free storage lasts
@@ -296,17 +408,16 @@ async function uploadOptionalFiles(photo, pdf, uploaded) {
 async function submitReport(e) {
     e.preventDefault();
     const btn = $('submit-btn');
-    const originalText = btn.textContent;
     const uploaded = [];
+    let succeeded = false;
 
     try {
         const priority = $('priority').value;
         const emergency_level = priority === 'Kecemasan' ? $('emergency_level').value : null;
         if (priority === 'Kecemasan' && !emergency_level) throw new Error('Sila pilih Tahap Kecemasan (Kritikal / Tidak Kritikal).');
 
-        btn.disabled = true;
-        btn.textContent = 'Memuat naik fail & menghantar aduan...';
-        $('submit-success').classList.add('hidden');
+        setButtonState(btn, 'loading', 'Memuat naik & menghantar...');
+        hideSubmitSuccess();
 
         const { photo_path, pdf_path } = await uploadOptionalFiles(
             $('photo_file').files[0], $('pdf_file').files[0], uploaded);
@@ -322,19 +433,19 @@ async function submitReport(e) {
         }).select('ref_no').single();
         if (error) throw error;
 
+        succeeded = true;
+        setButtonState(btn, 'success');
         showSubmitSuccess(data.ref_no);
-        $('report-form').reset();
+        $('report-form').reset(); // the reset listener also clears counters and file previews
         onPriorityChange();
-        $('image-preview-container').classList.add('hidden');
-        $('pdf-preview-info').classList.add('hidden');
         loadHistory('school');
     } catch (err) {
         console.error('submitReport:', err);
         if (uploaded.length) await sb.storage.from(BUCKET).remove(uploaded);
         showToast('Ralat: ' + (err.message || err), 'error');
     } finally {
-        btn.disabled = false;
-        btn.textContent = originalText;
+        if (succeeded) await sleep(reducedMotion() ? 0 : 900); // let the check mark show
+        setButtonState(btn, 'idle');
     }
 }
 
@@ -342,14 +453,23 @@ async function submitReport(e) {
 function showSubmitSuccess(refNo) {
     const panel = $('submit-success');
     panel.innerHTML = `
+        <span class="success-icon">${icon('check')}</span>
         <div>
             <strong>Aduan berjaya dihantar ke PPD Pontian!</strong>
-            <div>No Rujukan: <b class="ref-no">${esc(refNo)}</b></div>
+            <div>No Rujukan: <span class="ref-no">${esc(refNo)}</span></div>
         </div>
-        <button type="button" class="btn-close" aria-label="Tutup">✕</button>`;
-    panel.querySelector('.btn-close').addEventListener('click', () => panel.classList.add('hidden'));
-    panel.classList.remove('hidden');
-    panel.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        <button type="button" class="btn-close" aria-label="Tutup">${icon('x')}</button>`;
+    panel.querySelector('.btn-close').addEventListener('click', hideSubmitSuccess);
+    clearTimeout(panel._hideTimer); // a fast submit must not be hidden by the previous fade-out
+    panel.classList.remove('hidden', 'is-leaving');
+    panel.scrollIntoView({ behavior: reducedMotion() ? 'auto' : 'smooth', block: 'center' });
+}
+
+function hideSubmitSuccess() {
+    const panel = $('submit-success');
+    if (panel.classList.contains('hidden')) return;
+    panel.classList.add('is-leaving');
+    panel._hideTimer = setTimeout(() => panel.classList.add('hidden'), reducedMotion() ? 0 : 200);
 }
 
 // ==========================================
