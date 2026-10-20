@@ -295,7 +295,6 @@
                     </form>
                 </div>
 
-                <!-- History rows + filters are restyled in stage (d) -->
                 <aside class="history-section card">
                     <div class="card-head">
                         <span class="card-icon"><svg class="icon"><use href="#i-history"/></svg></span>
@@ -303,6 +302,7 @@
                             <div class="card-title">Sejarah Aduan Sekolah Ini</div>
                             <div class="card-sub">Klik aduan untuk butiran &amp; maklum balas</div>
                         </div>
+                        <span class="count-pill" id="school-history-count">0</span>
                     </div>
                     <div class="filter-bar">
                         <div class="input-wrap">
@@ -380,21 +380,30 @@
                 <div id="fifo-queue-list" class="fifo-queue"></div>
             </div>
 
-            <!-- History panel content is restyled in stage (d) -->
             <div id="ppd-history-panel" class="tab-panel hidden" role="tabpanel" aria-labelledby="tab-history">
-                <div class="section-header">
-                    <h2>Sejarah Aduan Semua Sekolah</h2>
-                    <p>Rekod aduan beserta maklum balas siasatan PPD</p>
+                <div class="card history-card">
+                    <div class="card-head">
+                        <span class="card-icon"><svg class="icon"><use href="#i-history"/></svg></span>
+                        <div>
+                            <div class="card-title">Sejarah Aduan Semua Sekolah</div>
+                            <div class="card-sub">Rekod aduan beserta maklum balas siasatan PPD</div>
+                        </div>
+                        <span class="count-pill" id="ppd-history-count">0</span>
+                    </div>
+                    <div class="filter-bar">
+                        <div class="input-wrap">
+                            <svg class="icon"><use href="#i-search"/></svg>
+                            <input type="search" id="ppd-search" placeholder="Cari sekolah / no. rujukan / tajuk..."
+                                   aria-label="Cari aduan" oninput="debouncedHistory('ppd')">
+                        </div>
+                        <select id="ppd-status" aria-label="Tapis status" onchange="loadHistory('ppd')">
+                            <option value="">Semua status</option>
+                            <option value="Menunggu">Menunggu</option>
+                            <option value="Selesai">Selesai</option>
+                        </select>
+                    </div>
+                    <div id="ppd-history-list" class="report-list"></div>
                 </div>
-                <div class="filter-bar">
-                    <input type="search" id="ppd-search" placeholder="Cari sekolah / no. rujukan / tajuk..." oninput="debouncedHistory('ppd')">
-                    <select id="ppd-status" onchange="loadHistory('ppd')">
-                        <option value="">Semua status</option>
-                        <option value="Menunggu">Menunggu</option>
-                        <option value="Selesai">Selesai</option>
-                    </select>
-                </div>
-                <div id="ppd-history-list" class="report-list"></div>
             </div>
         </section>
 

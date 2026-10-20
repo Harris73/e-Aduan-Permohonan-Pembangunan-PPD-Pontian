@@ -186,7 +186,6 @@ function setupReportFormUi() {
         removeFile('pdf');
     }, 0));
 }
-const fmtDate = (d) => new Date(d).toLocaleString('ms-MY');
 const one = (x) => (Array.isArray(x) ? x[0] : x) || null; // embedded 1-to-1 relation
 
 const DAY_MS = 86400000;
@@ -225,10 +224,11 @@ function priorityBadge(r) {
     return `<span class="badge badge-dot ${PRIO_CLASS[r.priority] || ''}">${esc(r.priority)}</span>`;
 }
 
+// items: [{ kind: 'img' | 'pdf', label, url }] → file chips (items without a url are skipped)
 function linkButtons(items) {
     const ok = items.filter((i) => i.url);
     return ok.length
-        ? ok.map((i) => `<a class="btn-pdf-link" href="${esc(i.url)}" target="_blank" rel="noopener">${i.label}</a>`).join(' ')
+        ? ok.map((i) => fileChip(i.kind, i.label, i.url)).join('')
         : '<small class="muted">Tiada lampiran</small>';
 }
 
@@ -522,8 +522,8 @@ function reportPaths(r) {
 // Signed URL while the file is in Supabase, Google Drive link after the 6-month cleanup
 function reportLinks(r, urls) {
     return [
-        { label: '🖼️ Gambar Kerosakan', url: urls[r.photo_path] || r.drive_photo_link },
-        { label: '📄 Surat Rasmi', url: urls[r.pdf_path] || r.drive_pdf_link },
+        { kind: 'img', label: 'Gambar Kerosakan', url: urls[r.photo_path] || r.drive_photo_link },
+        { kind: 'pdf', label: 'Surat Rasmi (PDF)', url: urls[r.pdf_path] || r.drive_pdf_link },
     ];
 }
 
@@ -1121,10 +1121,76 @@ function debouncedHistory(scope) {
     historyTimer = setTimeout(() => loadHistory(scope), 350);
 }
 
+const historySeq = { school: 0, ppd: 0 }; // only the newest search per list may render
+
+function skeletonRows(n = 4) {
+    return '<span class="sr-only">Memuatkan rekod aduan...</span>' + Array.from({ length: n }, () => `
+        <div class="sk-row" aria-hidden="true">
+            <div class="sk-stack"><div class="skeleton sk-line lg w-80"></div><div class="skeleton sk-line w-50"></div></div>
+            <div class="skeleton sk-pill"></div>
+        </div>`).join('');
+}
+const emptyHistoryHtml = (filtered) => filtered ? `
+    <div class="empty-state">
+        <span class="empty-icon">${icon('search')}</span>
+        <strong>Tiada padanan</strong>
+        <span>Tiada rekod aduan dijumpai. Cuba kata kunci atau status lain.</span>
+    </div>` : `
+    <div class="empty-state">
+        <span class="empty-icon">${icon('inbox')}</span>
+        <strong>Belum ada aduan</strong>
+        <span>Tiada rekod aduan dijumpai.</span>
+    </div>`;
+
+function statusBadge(r) {
+    const done = r.status === 'Selesai';
+    return `<span class="badge ${done ? 'status-selesai' : 'status-menunggu'}">${icon(done ? 'check' : 'clock')}${esc(r.status)}</span>`;
+}
+
+function historyItemHtml(r, i, isPpd) {
+    return `
+        <details class="history-item" style="--i:${Math.min(i, 10)}">
+            <summary class="history-row">
+                <div>
+                    <div class="history-title">${esc(r.title)}</div>
+                    <div class="history-meta">
+                        <span class="ref">${esc(r.ref_no)}</span>
+                        ${isPpd ? `<span>${icon('building', 'icon-sm')}${esc(r.school_name)}</span>` : ''}
+                        <span>${icon('tag', 'icon-sm')}${esc(r.category)}</span>
+                        ${timeTag(r.submitted_at)}
+                    </div>
+                </div>
+                <div class="history-badges">${priorityBadge(r)}${statusBadge(r)}</div>
+                ${icon('chevron-down', 'chev')}
+            </summary>
+            <div class="hist-body"></div>
+        </details>`;
+}
+
+// Opened row: description, files, timeline (sent → feedback → done) and the feedback summary
+function historyDetailHtml(r, urls) {
+    const fb = one(r.report_feedback);
+    const done = r.status === 'Selesai' && r.completed_at;
+    return `
+        <p class="hist-desc pre">${esc(r.description)}</p>
+        <div class="evidence-grid">${linkButtons(reportLinks(r, urls))}</div>
+        <ol class="timeline">
+            <li class="is-done"><span class="tl-dot"></span><div><strong>Aduan dihantar</strong>
+                <span class="muted">${esc(fullDate(r.submitted_at))}</span></div></li>
+            <li class="${fb ? 'is-done' : ''}"><span class="tl-dot"></span><div><strong>Maklum balas siasatan</strong>
+                <span class="muted">${fb ? esc(fb.officer_name) + ' · ' + esc(fullDate(fb.created_at)) : 'Belum dihantar'}</span></div></li>
+            <li class="${done ? 'is-done' : ''}"><span class="tl-dot"></span><div><strong>Selesai</strong>
+                <span class="muted">${done ? esc(fullDate(r.completed_at)) : 'Belum selesai'}</span></div></li>
+        </ol>
+        ${fb ? feedbackBlock(fb, urls) : '<p class="small muted hist-note">Belum ada maklum balas siasatan daripada PPD.</p>'}`;
+}
+
 async function loadHistory(scope) {
     const isPpd = scope === 'ppd';
     const container = $(`${scope}-history-list`);
-    container.innerHTML = '<small>Memuatkan rekod aduan...</small>';
+    const seq = ++historySeq[scope];
+    container.setAttribute('aria-busy', 'true');
+    container.innerHTML = skeletonRows(4);
 
     const status = $(`${scope}-status`).value;
     const term = $(`${scope}-search`).value.trim().replace(/[^\p{L}\p{N}\s\-\/]/gu, '');
@@ -1137,49 +1203,34 @@ async function loadHistory(scope) {
     if (term) query = query.or(`ref_no.ilike.%${term}%,title.ilike.%${term}%,school_name.ilike.%${term}%`);
 
     const { data, error } = await query;
+    if (seq !== historySeq[scope]) return; // a newer search has started; drop this stale result
+    container.removeAttribute('aria-busy');
 
+    const count = $(`${scope}-history-count`);
     if (error) {
-        container.innerHTML = '<small class="error-msg">Ralat: ' + esc(error.message) + '</small>';
+        count.textContent = '–';
+        container.innerHTML = '<p class="error-msg">Ralat: ' + esc(error.message) + '</p>';
         return;
     }
+    count.textContent = data.length;
     if (!data.length) {
-        container.innerHTML = '<small class="muted">Tiada rekod aduan dijumpai.</small>';
+        container.innerHTML = emptyHistoryHtml(Boolean(status || term));
         return;
     }
 
-    container.innerHTML = '';
-    data.forEach((r) => {
-        const done = r.status === 'Selesai';
-        const row = document.createElement('details');
-        row.className = 'history-item';
-        row.innerHTML = `
-            <summary class="history-row">
-                <div>
-                    <b>${esc(r.ref_no)}</b> - ${esc(r.title)}
-                    <div class="muted small">
-                        ${isPpd ? esc(r.school_name) + ' | ' : ''}${new Date(r.submitted_at).toLocaleDateString('ms-MY')} | ${esc(r.category)}
-                    </div>
-                </div>
-                <div class="history-badges">
-                    ${priorityBadge(r)}
-                    <span class="badge ${done ? 'badge-ok' : 'badge-wait'}">${esc(r.status)}</span>
-                </div>
-            </summary>
-            <div class="hist-body"><small class="muted">Memuatkan butiran...</small></div>`;
-
+    container.innerHTML = data.map((r, i) => historyItemHtml(r, i, isPpd)).join('');
+    container.querySelectorAll('.history-item').forEach((row, i) => {
+        const r = data[i];
         // Load signed URLs only when the row is opened
         row.addEventListener('toggle', async () => {
             if (!row.open || row.dataset.loaded) return;
             row.dataset.loaded = '1';
+            const body = row.querySelector('.hist-body');
+            body.innerHTML = '<div class="sk-stack" aria-hidden="true"><div class="skeleton sk-line w-90"></div>' +
+                             '<div class="skeleton sk-line w-60"></div></div>';
             const urls = await signedUrlMap(reportPaths(r));
-            const fb = one(r.report_feedback);
-            row.querySelector('.hist-body').innerHTML = `
-                <p class="pre">${esc(r.description)}</p>
-                <div class="evidence-grid">${linkButtons(reportLinks(r, urls))}</div>
-                <p class="small muted">Dihantar: ${fmtDate(r.submitted_at)}${r.completed_at ? ' | Selesai: ' + fmtDate(r.completed_at) : ''}</p>
-                ${fb ? feedbackBlock(fb, urls)
-                     : '<p class="small muted">Belum ada maklum balas siasatan daripada PPD.</p>'}`;
+            body.innerHTML = historyDetailHtml(r, urls);
         });
-        container.appendChild(row);
     });
+    restartStagger(container);
 }
