@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="ms">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>i-Pantas | Sistem Aduan Penyelenggaraan PPD Pontian</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+
+<body>
+
+    <header class="navbar">
+        <div class="logo-title">
+            <svg class="logo-mark" viewBox="0 0 40 40" width="40" height="40" aria-hidden="true">
+                <rect width="40" height="40" rx="9" fill="#fff"/>
+                <text x="20" y="26.5" text-anchor="middle" font-size="17" font-weight="700"
+                      font-family="Segoe UI, Roboto, Arial, sans-serif" fill="#1e3a8a">iP</text>
+            </svg>
+            <div>
+                <h1>i-Pantas</h1>
+                <small>Sistem Aduan Pembangunan • Pejabat Pendidikan Daerah Pontian</small>
+            </div>
+        </div>
+        <div id="user-session" class="user-session hidden">
+            <span id="nav-user-name"></span>
+            <span id="nav-user-role" class="badge"></span>
+            <button class="btn-logout" onclick="logout()">Log Keluar</button>
+        </div>
+    </header>
+
+    <!-- LOGIN -->
+    <div id="login-modal" class="modal-overlay hidden">
+        <div class="modal-card">
+            <h2>Log Masuk i-Pantas</h2>
+            <p>Sila pilih peranan dan masukkan maklumat akaun rasmi anda</p>
+
+            <form id="login-form" onsubmit="handleLogin(event)">
+                <div class="form-group">
+                    <label for="role">Log masuk sebagai</label>
+                    <select id="role" required>
+                        <option value="headmaster">Pengetua / Guru Besar</option>
+                        <option value="ppd_officer">Pegawai PPD</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="username">ID Pengguna / Kod Sekolah</label>
+                    <input type="text" id="username" placeholder="Contoh: JBA6001 atau PPD102"
+                           autocomplete="username" required>
+                </div>
+                <div class="form-group">
+                    <label for="password">Kata Laluan</label>
+                    <input type="password" id="password" placeholder="••••••••"
+                           autocomplete="current-password" required>
+                </div>
+                <div id="login-error" class="error-msg hidden">ID atau kata laluan tidak sah.</div>
+                <button type="submit" id="login-btn" class="btn-primary">Log Masuk</button>
+            </form>
+        </div>
+    </div>
+
+    <main class="container">
+
+        <div id="app-loading" class="app-loading" role="status">Memuatkan sistem...</div>
+        <div id="app-fatal" class="error-msg hidden" role="alert">
+            Gagal memuatkan sistem. Sila semak sambungan internet dan muat semula halaman.
+        </div>
+
+        <!-- PENGETUA / GURU BESAR -->
+        <section id="headmaster-view" class="view-section hidden">
+            <div class="section-header">
+                <h2>Permohonan Aduan Penyelenggaraan Baru</h2>
+                <p>Hantar bukti kerosakan fizikal sekolah ke PPD Pontian</p>
+            </div>
+
+            <div id="submit-success" class="success-panel hidden" role="status"></div>
+
+            <form id="report-form" class="card-form" onsubmit="submitReport(event)">
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label for="category">Kategori Kerosakan *</label>
+                        <select id="category" required>
+                            <option value="">-- Sila Pilih --</option>
+                            <option value="Bangunan">Bangunan & Dinding</option>
+                            <option value="Elektrik">Sistem Pendawaian Elektrik</option>
+                            <option value="Paip/Sanitasi">Paip & Sanitasi Tandas</option>
+                            <option value="Infrastruktur/Padang">Infrastruktur / Padang / Pagar</option>
+                            <option value="Lain-lain">Lain-lain Kerosakan</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="priority">Tahap Keutamaan *</label>
+                        <select id="priority" required onchange="onPriorityChange()">
+                            <option value="Rendah">Rendah</option>
+                            <option value="Sederhana" selected>Sederhana</option>
+                            <option value="Tinggi">Tinggi</option>
+                            <option value="Kecemasan">Kecemasan</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Appears only when Kecemasan is chosen -->
+                <div id="emergency-level-group" class="form-group emergency-box hidden">
+                    <label for="emergency_level">Tahap Kecemasan *</label>
+                    <select id="emergency_level">
+                        <option value="">-- Sila Pilih --</option>
+                        <option value="Kritikal">Kritikal (bahaya segera kepada murid / guru)</option>
+                        <option value="Tidak Kritikal">Tidak Kritikal</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="title">Tajuk Ringkas Aduan *</label>
+                    <input type="text" id="title" maxlength="150"
+                           placeholder="Contoh: Kerosakan Bumbung Bocor Blok A" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="description">Keterangan Terperinci Kerosakan *</label>
+                    <textarea id="description" rows="4" maxlength="3000"
+                              placeholder="Jelaskan lokasi kerosakan, tahap risiko, dan sejarah kerosakan..." required></textarea>
+                </div>
+
+                <div class="form-group">
+                    <label for="photo_file">Gambar Kerosakan (JPG / PNG / WebP)</label>
+                    <input type="file" id="photo_file" accept="image/jpeg,image/png,image/webp"
+                           onchange="previewLocalImage(event)">
+                    <div id="image-preview-container" class="hidden margin-top-sm">
+                        <img id="image-preview" src="" alt="Pratonton Gambar">
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="pdf_file">Surat Rasmi / Dokumen Sokongan (PDF, maks 5 MB)</label>
+                    <input type="file" id="pdf_file" accept="application/pdf"
+                           onchange="previewLocalPdf(event)">
+                    <div id="pdf-preview-info" class="hidden margin-top-sm">
+                        <span id="pdf-file-name" class="badge-info"></span>
+                    </div>
+                </div>
+
+                <button type="submit" id="submit-btn" class="btn-primary">Hantar Permohonan Aduan</button>
+            </form>
+
+            <div class="history-section">
+                <h3>Sejarah Aduan Sekolah Ini</h3>
+                <div class="filter-bar">
+                    <input type="search" id="school-search" placeholder="Cari no. rujukan / tajuk..." oninput="debouncedHistory('school')">
+                    <select id="school-status" onchange="loadHistory('school')">
+                        <option value="">Semua status</option>
+                        <option value="Menunggu">Menunggu</option>
+                        <option value="Selesai">Selesai</option>
+                    </select>
+                </div>
+                <div id="school-history-list" class="report-list"></div>
+            </div>
+        </section>
+
+        <!-- PEGAWAI PPD -->
+        <section id="ppd-view" class="view-section hidden">
+            <div class="tabs">
+                <button id="tab-queue" class="tab active" onclick="showPpdTab('queue')">Senarai Menunggu (FIFO)</button>
+                <button id="tab-history" class="tab" onclick="showPpdTab('history')">Sejarah Aduan</button>
+            </div>
+
+            <div id="ppd-queue-panel">
+                <div class="section-header">
+                    <h2>Senarai Menunggu Aduan (Sistem FIFO)</h2>
+                    <p>Aduan disusun mengikut tarikh penerimaan terawal. Hantar maklum balas siasatan sebelum menandakan selesai.</p>
+                </div>
+                <div id="fifo-queue-list" class="fifo-queue"></div>
+            </div>
+
+            <div id="ppd-history-panel" class="hidden">
+                <div class="section-header">
+                    <h2>Sejarah Aduan Semua Sekolah</h2>
+                    <p>Rekod aduan beserta maklum balas siasatan PPD</p>
+                </div>
+                <div class="filter-bar">
+                    <input type="search" id="ppd-search" placeholder="Cari sekolah / no. rujukan / tajuk..." oninput="debouncedHistory('ppd')">
+                    <select id="ppd-status" onchange="loadHistory('ppd')">
+                        <option value="">Semua status</option>
+                        <option value="Menunggu">Menunggu</option>
+                        <option value="Selesai">Selesai</option>
+                    </select>
+                </div>
+                <div id="ppd-history-list" class="report-list"></div>
+            </div>
+        </section>
+
+    </main>
+
+    <div id="toast" class="toast hidden" role="status" aria-live="polite"></div>
+
+    <script src="app.js"></script>
+</body>
+</html>
